@@ -392,7 +392,7 @@ void TabPage::onFilesAdded(Fm::FileInfoList files) {
 }
 
 void TabPage::localizeTitle(const Fm::FilePath& path) {
-    // force localization on some locations (FIXME: localize them in libfm-qt?)
+    // force localization for some virtual locations represented by libfm-qt URIs
     if (!path.isNative()) {
         if (path.hasUriScheme("search")) {
             title_ = tr("Search Results");
