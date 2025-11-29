@@ -445,19 +445,17 @@ void TabPage::onFolderError(const Fm::GErrorPtr& err, Fm::Job::ErrorSeverity sev
         if (err.code() == G_IO_ERROR_NOT_MOUNTED && severity < Fm::Job::ErrorSeverity::CRITICAL) {
             auto& path = folder_->path();
             // WARNING: GVFS admin backend has a bug that tries to mount an admin path with
-            // a double slash, like "admin://X", even when Admin is already mounted. The mount
-            // is always completed successfully, so that it can cause an infinite loop here
+            // a double slash, like "admin://X", even when Admin is already mounted
+            // The mount is always completed successfully, so that it can cause an infinite loop here
             // Since "admin" is already handled by canOpenAdmin(), it can be safely excluded
-            // here, as a workaround
+            // here as a workaround
             if (!path.hasUriScheme("admin")) {
                 MountOperation* op = new MountOperation(true, this);
                 op->mountEnclosingVolume(path);
                 if (op->wait()) {  // blocking event loop, wait for mount operation to finish
-                    // This will reload the folder, which generates a new "start-loading"
-                    // signal, so we get more "start-loading" signals than "finish-loading"
-                    // signals. FIXME: This is a bug of libfm
-                    // Because the two signals are not correctly paired, we need to
-                    // remove busy cursor here since "finish-loading" is not emitted
+                    // Reloading the folder here can emit another startLoading() signal
+                    // without a matching finishLoading(), so we must restore the busy cursor
+                    // explicitly because the usual cursor reset will not be triggered
                     QApplication::restoreOverrideCursor();  // remove busy cursor
                     overrideCursor_ = false;
                     response = Fm::Job::ErrorAction::RETRY;
@@ -466,8 +464,9 @@ void TabPage::onFolderError(const Fm::GErrorPtr& err, Fm::Job::ErrorSeverity sev
             }
         }
     }
-    if (folder_  // the tab may have been closed when waiting for the mount operation above
-        && severity >= Fm::Job::ErrorSeverity::MODERATE) {
+
+    if (folder_ &&  // the tab may have been closed when waiting for the mount operation above
+        severity >= Fm::Job::ErrorSeverity::MODERATE) {
         /* Only show more severe errors to the users and
          * ignore milder errors. Otherwise too many error
          * message boxes can be annoying
@@ -475,9 +474,10 @@ void TabPage::onFolderError(const Fm::GErrorPtr& err, Fm::Job::ErrorSeverity sev
          * https://sourceforge.net/tracker/?func=detail&aid=3411298&group_id=156956&atid=801864
          */
 
-        // FIXME: consider replacing this modal dialog with an info bar to improve usability
+        // Use a modal dialog here so error reporting stays local to the tab even without an info bar
         QMessageBox::critical(this, tr("Error"), err.message());
     }
+
     response = Fm::Job::ErrorAction::CONTINUE;
 }
 
