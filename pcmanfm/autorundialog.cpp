@@ -1,100 +1,121 @@
-/*
-
-    Copyright (C) 2013  Hong Jen Yee (PCMan) <pcman.tw@gmail.com>
-
-    This program is free software; you can redistribute it and/or modify
-    it under the terms of the GNU General Public License as published by
-    the Free Software Foundation; either version 2 of the License, or
-    (at your option) any later version.
-
-    This program is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
-
-    You should have received a copy of the GNU General Public License along
-    with this program; if not, write to the Free Software Foundation, Inc.,
-    51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
-*/
-
-
 #include "autorundialog.h"
-#include <QListWidgetItem>
-#include "application.h"
-#include "mainwindow.h"
+
 #include <libfm-qt6/core/filepath.h>
 #include <libfm-qt6/core/iconinfo.h>
 
+#include <QListWidgetItem>
+
+#include "application.h"
+#include "mainwindow.h"
+
 namespace PCManFM {
 
-AutoRunDialog::AutoRunDialog(GVolume* volume, GMount* mount, QWidget* parent, Qt::WindowFlags f):
-    QDialog(parent, f),
-    cancellable(g_cancellable_new()),
-    applications(nullptr),
-    mount_(G_MOUNT(g_object_ref(mount))) {
-
+AutoRunDialog::AutoRunDialog(GVolume* volume, GMount* mount, QWidget* parent, Qt::WindowFlags f)
+    : QDialog(parent, f),
+      cancellable(g_cancellable_new()),
+      applications(nullptr),
+      mount_(mount ? G_MOUNT(g_object_ref(mount)) : nullptr) {
     setAttribute(Qt::WA_DeleteOnClose);
     ui.setupUi(this);
 
-    GIcon* gicon = g_volume_get_icon(volume);
-    QIcon icon = Fm::IconInfo::fromGIcon(gicon)->qicon();
-    ui.icon->setPixmap(icon.pixmap(QSize(48, 48)));
+    // show the volume icon for the medium if available
+    if (volume) {
+        GIcon* gicon = g_volume_get_icon(volume);
+        if (gicon) {
+            QIcon icon = Fm::IconInfo::fromGIcon(gicon)->qicon();
+            ui.icon->setPixmap(icon.pixmap(QSize(48, 48)));
+            g_object_unref(gicon);
+        }
+    }
 
-    // add actions
-    QListWidgetItem* item = new QListWidgetItem(QIcon::fromTheme(QStringLiteral("system-file-manager")), tr("Open in file manager"));
+    // add generic file-manager action as the fallback choice
+    auto* item =
+        new QListWidgetItem(QIcon::fromTheme(QStringLiteral("system-file-manager")), tr("Open in file manager"));
     ui.listWidget->addItem(item);
 
-    g_mount_guess_content_type(mount, TRUE, cancellable, (GAsyncReadyCallback)onContentTypeFinished, this);
+    // query content types asynchronously to populate application-specific actions
+    if (mount_) {
+        g_mount_guess_content_type(mount_, TRUE, cancellable,
+                                   reinterpret_cast<GAsyncReadyCallback>(onContentTypeFinished), this);
+    }
 
     connect(ui.listWidget, &QListWidget::itemDoubleClicked, this, &QDialog::accept);
 }
 
 AutoRunDialog::~AutoRunDialog() {
+    // free the application list and unref each GAppInfo
     g_list_free_full(applications, g_object_unref);
+    applications = nullptr;
 
-    if(mount_) {
+    if (mount_) {
         g_object_unref(mount_);
+        mount_ = nullptr;
     }
 
-    if(cancellable) {
+    if (cancellable) {
+        // cancel any outstanding content-type query and drop our reference
         g_cancellable_cancel(cancellable);
         g_object_unref(cancellable);
+        cancellable = nullptr;
     }
 }
 
 void AutoRunDialog::accept() {
-    QListWidgetItem* item = ui.listWidget->selectedItems().first();
-    if(item) {
-        GFile* gf = g_mount_get_root(mount_);
-        void* p = item->data(Qt::UserRole).value<void*>();
-        if(p) { // run the selected application
-            GAppInfo* app = G_APP_INFO(p);
-            GList* filelist = g_list_prepend(nullptr, gf);
-            g_app_info_launch(app, filelist, nullptr, nullptr);
-            g_list_free(filelist);
-        }
-        else {
-            // the default action, open the mounted folder in the file manager
-            Application* app = static_cast<Application*>(qApp);
-            Settings& settings = app->settings();
-            Fm::FilePath path{gf, true};
-            // open the path in a new window
-            // FIXME: or should we open it in a new tab? Make this optional later
-            MainWindow* win = new MainWindow(path);
-            win->resize(settings.windowWidth(), settings.windowHeight());
-            if(settings.windowMaximized()) {
-                win->setWindowState(win->windowState() | Qt::WindowMaximized);
-            }
-            win->show();
-        }
-        g_object_unref(gf);
+    // ensure there is always a current item if the list is non-empty
+    if (!ui.listWidget->currentItem() && ui.listWidget->count() > 0) {
+        ui.listWidget->setCurrentRow(0);
     }
+
+    QList<QListWidgetItem*> selected = ui.listWidget->selectedItems();
+    if (selected.isEmpty()) {
+        QDialog::accept();
+        return;
+    }
+
+    auto* item = selected.first();
+    if (!item || !mount_) {
+        QDialog::accept();
+        return;
+    }
+
+    GFile* gf = g_mount_get_root(mount_);
+    if (!gf) {
+        QDialog::accept();
+        return;
+    }
+
+    void* p = item->data(Qt::UserRole).value<void*>();
+    if (p) {
+        // run the selected application on the mount root
+        GAppInfo* app = G_APP_INFO(p);
+        GList* filelist = g_list_prepend(nullptr, gf);
+        g_app_info_launch(app, filelist, nullptr, nullptr);
+        g_list_free(filelist);
+    } else {
+        // default action: open the mounted folder in the file manager
+        auto* app = static_cast<Application*>(qApp);
+        Settings& settings = app->settings();
+        Fm::FilePath path{gf, true};
+
+        // open the path in a new main window using the configured initial geometry
+        auto* win = new MainWindow(path);
+        win->resize(settings.windowWidth(), settings.windowHeight());
+        if (settings.windowMaximized()) {
+            win->setWindowState(win->windowState() | Qt::WindowMaximized);
+        }
+        win->show();
+    }
+
+    g_object_unref(gf);
     QDialog::accept();
 }
 
 // static
 void AutoRunDialog::onContentTypeFinished(GMount* mount, GAsyncResult* res, AutoRunDialog* pThis) {
-    if(pThis->cancellable) {
+    Q_UNUSED(mount);
+
+    // once the async query is complete we no longer need the cancellable
+    if (pThis->cancellable) {
         g_object_unref(pThis->cancellable);
         pThis->cancellable = nullptr;
     }
@@ -102,43 +123,50 @@ void AutoRunDialog::onContentTypeFinished(GMount* mount, GAsyncResult* res, Auto
     char** types = g_mount_guess_content_type_finish(mount, res, nullptr);
     char* desc = nullptr;
 
-    if(types) {
-        if(types[0]) {
-            for(char** type = types; *type; ++type) {
+    if (types) {
+        if (types[0]) {
+            // collect all applications that can handle any of the detected content types
+            for (char** type = types; *type; ++type) {
                 GList* l = g_app_info_get_all_for_type(*type);
-                if(l) {
+                if (l) {
                     pThis->applications = g_list_concat(pThis->applications, l);
                 }
             }
+            // use the first content type for the description label
             desc = g_content_type_get_description(types[0]);
         }
         g_strfreev(types);
 
-        if(pThis->applications) {
+        // populate the list widget with per-application actions
+        if (pThis->applications) {
             int pos = 0;
-            for(GList* l = pThis->applications; l; l = l->next, ++pos) {
+            for (GList* l = pThis->applications; l; l = l->next, ++pos) {
                 GAppInfo* app = G_APP_INFO(l->data);
                 GIcon* gicon = g_app_info_get_icon(app);
                 QIcon icon = Fm::IconInfo::fromGIcon(gicon)->qicon();
                 QString text = QString::fromUtf8(g_app_info_get_name(app));
-                QListWidgetItem* item = new QListWidgetItem(icon, text);
-                // NOTE (void*) casting is needed as GAppInfo does not inherit from QObject
-                item->setData(Qt::UserRole, QVariant::fromValue((void*)app));
+
+                auto* item = new QListWidgetItem(icon, text);
+                // store the raw GAppInfo pointer in user data
+                // the lifetime is managed by the applications GList and freed in the destructor
+                item->setData(Qt::UserRole, QVariant::fromValue(static_cast<void*>(app)));
+
                 pThis->ui.listWidget->insertItem(pos, item);
             }
         }
     }
 
-    if(desc) {
+    if (desc) {
         pThis->ui.mediumType->setText(QString::fromUtf8(desc));
         g_free(desc);
-    }
-    else {
-        pThis->ui.mediumType->setText(tr("Removable Disk"));
+    } else {
+        pThis->ui.mediumType->setText(QObject::tr("Removable Disk"));
     }
 
-    // select the first item
-    pThis->ui.listWidget->item(0)->setSelected(true);
+    // select the first item so there is always a default choice
+    if (pThis->ui.listWidget->count() > 0) {
+        pThis->ui.listWidget->item(0)->setSelected(true);
+    }
 }
 
-} // namespace PCManFM
+}  // namespace PCManFM
