@@ -279,10 +279,8 @@ void TabPage::onFolderStartLoading() {
         disconnect(folderModel_, &Fm::FolderModel::filesAdded, this, &TabPage::onFilesAdded);
     }
     if (!overrideCursor_) {
-        // FIXME: sometimes FmFolder of libfm generates unpaired "start-loading" and
-        // "finish-loading" signals of uncertain reasons. This should be a bug in libfm
-        // Until it's fixed in libfm, we need to workaround the problem here, not to
-        // override the cursor twice
+        // Some libfm-qt versions can emit extra startLoading() signals without matching finishLoading()
+        // Track overrideCursor_ locally so we do not stack multiple override cursors
         QApplication::setOverrideCursor(QCursor(Qt::WaitCursor));
         overrideCursor_ = true;
     }
