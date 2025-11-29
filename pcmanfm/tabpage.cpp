@@ -1,23 +1,3 @@
-/*
-
-    Copyright (C) 2013  Hong Jen Yee (PCMan) <pcman.tw@gmail.com>
-
-    This program is free software; you can redistribute it and/or modify
-    it under the terms of the GNU General Public License as published by
-    the Free Software Foundation; either version 2 of the License, or
-    (at your option) any later version.
-
-    This program is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
-
-    You should have received a copy of the GNU General Public License along
-    with this program; if not, write to the Free Software Foundation, Inc.,
-    51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
-*/
-
-
 #include "tabpage.h"
 #include "launcher.h"
 #include <libfm-qt6/filemenu.h>
@@ -75,10 +55,10 @@ void FilterEdit::keyPressEvent(QKeyEvent* event) {
 }
 
 void FilterEdit::keyPressed(QKeyEvent* event) {
-    // NOTE: Movement and delete keys should be left to the view.
+    // NOTE: Movement and delete keys should be left to the view
     // Copy/paste shortcuts are taken by the view but they aren't needed here
     // (Shift+Insert works for pasting but, since most users may not be familiar
-    // with it, an action is added to the main window for focusing an empty bar).
+    // with it, an action is added to the main window for focusing an empty bar)
     if(!hasFocus()
        && event->key() != Qt::Key_Left && event->key() != Qt::Key_Right
        && event->key() != Qt::Key_Home && event->key() != Qt::Key_End
@@ -133,7 +113,7 @@ TabPage::TabPage(QWidget* parent):
     folderView_ = new View(settings.viewMode(), this);
     folderView_->setMargins(settings.folderViewCellMargins());
     folderView_->setShadowHidden(settings.shadowHidden());
-    // newView->setColumnWidth(Fm::FolderModel::ColumnName, 200);
+    // newView->setColumnWidth(Fm::FolderModel::ColumnName, 200)
     connect(folderView_, &View::selChanged, this, &TabPage::onSelChanged);
     connect(folderView_, &View::clickedBack, this, &TabPage::backwardRequested);
     connect(folderView_, &View::clickedForward, this, &TabPage::forwardRequested);
@@ -224,8 +204,8 @@ bool TabPage::eventFilter(QObject* watched, QEvent* event) {
         if(QKeyEvent* ke = static_cast<QKeyEvent*>(event)) {
             if(filterBar_ && !static_cast<Application*>(qApp)->settings().showFilter()) {
                 // With a transient filter-bar, transfer the pressed keys to the bar, but only
-                // emit a signal on pressing a non-autorepeated Backspace if the bar is hidden.
-                // That signal will be used in MainWindow for going up.
+                // emit a signal on pressing a non-autorepeated Backspace if the bar is hidden
+                // That signal will be used in MainWindow for going up
                 if(ke->key() == Qt::Key_Backspace && ke->modifiers() == Qt::NoModifier
                    && !filterBar_->isVisible()) {
                     if(!ke->isAutoRepeat()) {
@@ -269,8 +249,8 @@ void TabPage::onFilterStringChanged(QString str) {
         setFilterStr(str);
 
         // Because the filter string may be typed inside the view, we should wait for Qt
-        // to select an item before deciding about the selection in applyFilter().
-        // Therefore, we use a single-shot timer to apply the filter.
+        // to select an item before deciding about the selection in applyFilter()
+        // Therefore, we use a single-shot timer to apply the filter
         QTimer::singleShot(0, folderView_, [this] {
             applyFilter();
         });
@@ -279,9 +259,9 @@ void TabPage::onFilterStringChanged(QString str) {
         if(transientFilterBar) {
             if(filterBar_->isVisibleTo(this)) { // the page itself may be in an inactive tab
                 if(str.isEmpty()) {
-                    // focus the view BEFORE hiding the filter-bar to avoid redundant "FocusIn" events;
+                    // focus the view BEFORE hiding the filter-bar to avoid redundant "FocusIn" events
                     // otherwise, another widget inside the main window might gain focus immediately
-                    // after the filter-bar is hidden and only after that, the view will be focused.
+                    // after the filter-bar is hidden and only after that, the view will be focused
                     folderView()->childView()->setFocus();
                     filterBar_->hide();
                 }
@@ -311,29 +291,12 @@ void TabPage::onFolderStartLoading() {
     }
     if(!overrideCursor_) {
         // FIXME: sometimes FmFolder of libfm generates unpaired "start-loading" and
-        // "finish-loading" signals of uncertain reasons. This should be a bug in libfm.
+        // "finish-loading" signals of uncertain reasons. This should be a bug in libfm
         // Until it's fixed in libfm, we need to workaround the problem here, not to
-        // override the cursor twice.
+        // override the cursor twice
         QApplication::setOverrideCursor(QCursor(Qt::WaitCursor));
         overrideCursor_ = true;
     }
-#if 0
-#if FM_CHECK_VERSION(1, 0, 2) && 0 // disabled
-    if(fm_folder_is_incremental(_folder)) {
-        /* create a model for the folder and set it to the view
-           it is delayed for non-incremental folders since adding rows into
-           model is much faster without handlers connected to its signals */
-        FmFolderModel* model = fm_folder_model_new(folder, FALSE);
-        fm_folder_view_set_model(fv, model);
-        fm_folder_model_set_sort(model, app_config->sort_by,
-                                 (app_config->sort_type == GTK_SORT_ASCENDING) ?
-                                 FM_SORT_ASCENDING : FM_SORT_DESCENDING);
-        g_object_unref(model);
-    }
-    else
-#endif
-        fm_folder_view_set_model(fv, nullptr);
-#endif
 }
 
 void TabPage::onUiUpdated() {
@@ -356,7 +319,7 @@ void TabPage::onUiUpdated() {
         }
     }
     // if the current folder is the parent folder of the last browsed folder,
-    // select the folder item in current view.
+    // select the folder item in current view
     if(!scrolled && lastFolderPath_ && lastFolderPath_.parent() == path()) {
         QModelIndex index = folderView_->indexFromFolderPath(lastFolderPath_);
         if(index.isValid()) {
@@ -473,39 +436,13 @@ void TabPage::localizeTitle(const Fm::FilePath& path) {
 
 void TabPage::onFolderFinishLoading() {
     auto fi = folder_->info();
-    if(fi) { // if loading of the folder fails, it's possible that we don't have FmFileInfo.
+    if(fi) { // if loading of the folder fails, it's possible that we don't have FmFileInfo
         title_ = fi->displayName();
         localizeTitle(folder_->path());
         Q_EMIT titleChanged();
     }
 
     folder_->queryFilesystemInfo(); // FIXME: is this needed?
-#if 0
-    FmFolderView* fv = folder_view;
-    const FmNavHistoryItem* item;
-    GtkScrolledWindow* scroll = GTK_SCROLLED_WINDOW(fv);
-
-    /* Note: most of the time, we delay the creation of the
-     * folder model and do it after the whole folder is loaded.
-     * That is because adding rows into model is much faster when no handlers
-     * are connected to its signals. So we detach the model from folder view
-     * and create the model again when it's fully loaded.
-     * This optimization, however, is not used for FmFolder objects
-     * with incremental loading (search://) */
-    if(fm_folder_view_get_model(fv) == nullptr) {
-        /* create a model for the folder and set it to the view */
-        FmFolderModel* model = fm_folder_model_new(folder, app_config->show_hidden);
-        fm_folder_view_set_model(fv, model);
-#if FM_CHECK_VERSION(1, 0, 2)
-        /* since 1.0.2 sorting should be applied on model instead of view */
-        fm_folder_model_set_sort(model, app_config->sort_by,
-                                 (app_config->sort_type == GTK_SORT_ASCENDING) ?
-                                 FM_SORT_ASCENDING : FM_SORT_DESCENDING);
-#endif
-        g_object_unref(model);
-    }
-
-#endif
 
     // update status text
     QString& text = statusText_[StatusTextNormal];
@@ -518,8 +455,8 @@ void TabPage::onFolderFinishLoading() {
     }
 
     // After finishing loading the folder, the model is updated, but Qt delays the UI update
-    // for performance reasons. Therefore at this point the UI is not up to date.
-    // For example, the scrollbar ranges are not updated yet. We solve this by installing an Qt timeout handler.
+    // for performance reasons. Therefore at this point the UI is not up to date
+    // For example, the scrollbar ranges are not updated yet. We solve this by installing a Qt timeout handler
     QTimer::singleShot(10, this, &TabPage::onUiUpdated);
 }
 
@@ -529,18 +466,18 @@ void TabPage::onFolderError(const Fm::GErrorPtr& err, Fm::Job::ErrorSeverity sev
             auto& path = folder_->path();
             // WARNING: GVFS admin backend has a bug that tries to mount an admin path with
             // a double slash, like "admin://X", even when Admin is already mounted. The mount
-            // is always completed successfully, so that it can cause an infinite loop here.
+            // is always completed successfully, so that it can cause an infinite loop here
             // Since "admin" is already handled by canOpenAdmin(), it can be safely excluded
-            // here, as a workaround.
+            // here, as a workaround
             if(!path.hasUriScheme("admin")) {
                 MountOperation* op = new MountOperation(true, this);
                 op->mountEnclosingVolume(path);
-                if(op->wait()) { // blocking event loop, wait for mount operation to finish.
+                if(op->wait()) { // blocking event loop, wait for mount operation to finish
                     // This will reload the folder, which generates a new "start-loading"
                     // signal, so we get more "start-loading" signals than "finish-loading"
-                    // signals. FIXME: This is a bug of libfm.
+                    // signals. FIXME: This is a bug of libfm
                     // Because the two signals are not correctly paired, we need to
-                    // remove busy cursor here since "finish-loading" is not emitted.
+                    // remove busy cursor here since "finish-loading" is not emitted
                     QApplication::restoreOverrideCursor(); // remove busy cursor
                     overrideCursor_ = false;
                     response = Fm::Job::ErrorAction::RETRY;
@@ -553,10 +490,10 @@ void TabPage::onFolderError(const Fm::GErrorPtr& err, Fm::Job::ErrorSeverity sev
        && severity >= Fm::Job::ErrorSeverity::MODERATE) {
         /* Only show more severe errors to the users and
          * ignore milder errors. Otherwise too many error
-         * message boxes can be annoying.
-         * This fixes bug #3411298- Show "Permission denied" when switching to super user mode.
+         * message boxes can be annoying
+         * This fixes bug #3411298- Show "Permission denied" when switching to super user mode
          * https://sourceforge.net/tracker/?func=detail&aid=3411298&group_id=156956&atid=801864
-         * */
+         */
 
         // FIXME: consider replacing this modal dialog with an info bar to improve usability
         QMessageBox::critical(this, tr("Error"), err.message());
@@ -604,9 +541,9 @@ void TabPage::onFolderRemoved() {
     qDebug("folder removed");
     Settings& settings = static_cast<Application*>(qApp)->settings();
     // NOTE: call deleteLater() directly from this GObject signal handler
-    // does not work but I don't know why.
-    // Maybe it's the problem of glib mainloop integration?
-    // Call it when idle works, though.
+    // does not work but I don't know why
+    // Maybe it's the problem of glib mainloop integration
+    // Call it when idle works, though
     if(settings.closeOnUnmount()) {
         QTimer::singleShot(0, this, &TabPage::deleteLater);
     }
@@ -621,7 +558,7 @@ void TabPage::onFolderUnmount() {
     // NOTE: We cannot delete the page or change its directory here
     // because unmounting might be done from places view, in which case,
     // the mount operation is a child of the places view and should be
-    // finished before doing anything else.
+    // finished before doing anything else
     if(static_cast<Application*>(qApp)->settings().closeOnUnmount()) {
         freeFolder();
     }
@@ -640,14 +577,14 @@ void TabPage::onFolderContentChanged() {
 }
 
 QString TabPage::pathName() {
-    // auto disp_path = path().displayName();
-    // FIXME: displayName() returns invalid path sometimes.
+    // auto disp_path = path().displayName()
+    // FIXME: displayName() returns invalid path sometimes
     auto disp_path = path().toString();
     return QString::fromUtf8(disp_path.get());
 }
 
 void TabPage::chdir(Fm::FilePath newPath, bool addHistory) {
-    // qDebug() << "TABPAGE CHDIR:" << newPath.toString().get();
+    // qDebug() << "TABPAGE CHDIR:" << newPath.toString().get()
     if(filterBar_){
         filterBar_->clear();
     }
@@ -664,7 +601,7 @@ void TabPage::chdir(Fm::FilePath newPath, bool addHistory) {
         // reset the status selected text
         statusText_[StatusTextSelectedFiles] = QString();
 
-        // remember the previous folder path that we have browsed.
+        // remember the previous folder path that we have browsed
         lastFolderPath_ = folder_->path();
 
         if(addHistory) {
@@ -703,10 +640,10 @@ void TabPage::chdir(Fm::FilePath newPath, bool addHistory) {
     connect(folder_.get(), &Fm::Folder::startLoading, this, &TabPage::onFolderStartLoading);
     connect(folder_.get(), &Fm::Folder::finishLoading, this, &TabPage::onFolderFinishLoading);
 
-    // FIXME: Fm::Folder::error() is a bad design and might be removed in the future.
+    // FIXME: Fm::Folder::error() is a bad design and might be removed in the future
     connect(folder_.get(), &Fm::Folder::error, this, &TabPage::onFolderError);
     connect(folder_.get(), &Fm::Folder::fileSystemChanged, this, &TabPage::onFolderFsInfo);
-    /* destroy the page when the folder is unmounted or deleted. */
+    /* destroy the page when the folder is unmounted or deleted */
     connect(folder_.get(), &Fm::Folder::removed, this, &TabPage::onFolderRemoved);
     connect(folder_.get(), &Fm::Folder::unmount, this, &TabPage::onFolderUnmount);
     connect(folder_.get(), &Fm::Folder::contentChanged, this, &TabPage::onFolderContentChanged);
@@ -780,7 +717,7 @@ void TabPage::onSelChanged() {
     if(folderView_->hasSelection()) {
         auto files = folderView_->selectedFiles();
         int numSel = files.size();
-        /* FIXME: display total size of all selected files. */
+        /* FIXME: display total size of all selected files */
         if(numSel == 1) { /* only one file is selected (also, tell if it is a symlink)*/
             auto& fi = files.front();
             if(!fi->isDir()) {
@@ -918,8 +855,8 @@ void TabPage::setViewMode(Fm::FolderView::ViewMode mode) {
         folderView_->childView()->setFocus();
     }
     if(prevMode != folderView_->viewMode()) {
-        // FolderView::setViewMode() may delete the view to switch between list and tree.
-        // So, the event filter should be re-installed and the status message should be updated.
+        // FolderView::setViewMode() may delete the view to switch between list and tree
+        // So, the event filter should be re-installed and the status message should be updated
         folderView_->childView()->removeEventFilter(this);
         folderView_->childView()->installEventFilter(this);
         if(settings.noItemTooltip()) {
@@ -1103,18 +1040,18 @@ bool TabPage::canOpenAdmin() {
        if Admin is mounted. Four scenarios are possible:
 
        1. Admin is not supported. Then, the mount operation fails and this method returns "false"
-          after showing an error message.
+          after showing an error message
 
        2. Admin is supported but not mounted yet. Then, the first call to Fm::uriExists()
           does not show a password prompt. We mount Admin and ask for the password by calling
-          Fm::uriExists() again.
+          Fm::uriExists() again
 
        3. If Admin is already mounted but the correct password is not entered yet, the password
           will be asked by the first call to Fm::uriExists(). If the password is correct, "true"
           will be returned; if not, MountOperation::wait() will return "false" (because a repeated
-          mount fails) and so, another password prompt will not be shown.
+          mount fails) and so, another password prompt will not be shown
 
-       4. If Admin is already mounted and the password was entered before, "true" will be returned.
+       4. If Admin is already mounted and the password was entered before, "true" will be returned
     */
     const char* admin = "admin:///";
     if(Fm::uriExists(admin)) {
@@ -1126,7 +1063,7 @@ bool TabPage::canOpenAdmin() {
         return true;
     }
     if(folder_) {
-        QMessageBox::critical(parentWidget()->window(), QObject::tr("Error"), QObject::tr("Cannot open as Admin."));
+        QMessageBox::critical(parentWidget()->window(), QObject::tr("Error"), QObject::tr("Cannot open as Admin"));
     }
     return false;
 }
