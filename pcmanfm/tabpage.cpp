@@ -698,8 +698,8 @@ void TabPage::onSelChanged() {
     if (folderView_->hasSelection()) {
         auto files = folderView_->selectedFiles();
         int numSel = files.size();
-        /* FIXME: display total size of all selected files */
-        if (numSel == 1) { /* only one file is selected (also, tell if it is a symlink)*/
+
+        if (numSel == 1) { /* only one file is selected (also, tell if it is a symlink) */
             auto& fi = files.front();
             if (!fi->isDir()) {
                 QString name = static_cast<Application*>(qApp)->settings().showFullNames() &&
@@ -713,8 +713,7 @@ void TabPage::onSelChanged() {
                                    tr("Link to") + QChar(QChar::Space) + QString::fromStdString(fi->target()));
                 } else {
                     msg = QStringLiteral("\"%1\" (%2) %3")
-                              .arg(name,
-                                   Fm::formatFileSize(fi->size(), fm_config->si_unit),  // FIXME: deprecate fm_config
+                              .arg(name, Fm::formatFileSize(fi->size(), fm_config->si_unit),
                                    QString::fromUtf8(fi->mimeType()->desc()));
                 }
             } else {
@@ -726,30 +725,27 @@ void TabPage::onSelChanged() {
                     msg = QStringLiteral("\"%1\" %2").arg(fi->displayName(), QString::fromUtf8(fi->mimeType()->desc()));
                 }
             }
-            /* FIXME: should we support statusbar plugins as in the gtk+ version? */
+            /* Statusbar plugin hooks similar to the gtk+ version are not implemented here */
         } else {
             goffset sum;
             msg = tr("%n item(s) selected", nullptr, numSel);
-            /* don't count if too many files are selected, that isn't lightweight */
+
+            // show total size only when the number of selected entries is reasonable
             if (numSel < 1000) {
                 sum = 0;
                 for (auto& fi : files) {
                     if (fi->isDir()) {
-                        /* if we got a directory then we cannot tell it's size
-                        unless we do deep count but we cannot afford it */
+                        /* directory sizes are not summed here to avoid expensive deep counting */
                         sum = -1;
                         break;
                     }
                     sum += fi->size();
                 }
                 if (sum >= 0) {
-                    msg += QStringLiteral(" (%1)").arg(
-                        Fm::formatFileSize(sum, fm_config->si_unit));  // FIXME: deprecate fm_config
+                    msg += QStringLiteral(" (%1)").arg(Fm::formatFileSize(sum, fm_config->si_unit));
                 }
-                /* FIXME: should we support statusbar plugins as in the gtk+ version? */
+                /* additional selection details are intentionally omitted to keep this lightweight */
             }
-            /* FIXME: can we show some more info on selection?
-                that isn't lightweight if a lot of files are selected */
         }
     }
     statusText_[StatusTextSelectedFiles] = msg;
