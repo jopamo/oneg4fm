@@ -2,6 +2,7 @@
 
 #include <libfm-qt6/utilities.h>
 
+#include <QLocale>
 #include <QMessageBox>
 #include <QProgressDialog>
 #include <QPushButton>
@@ -14,14 +15,10 @@ BulkRenameDialog::BulkRenameDialog(QWidget* parent, Qt::WindowFlags flags) : QDi
     ui.setupUi(this);
     ui.lineEdit->setFocus();
 
-    if (auto* okButton = ui.buttonBox->button(QDialogButtonBox::Ok)) {
-        connect(okButton, &QAbstractButton::clicked, this, &QDialog::accept);
-    }
-    if (auto* cancelButton = ui.buttonBox->button(QDialogButtonBox::Cancel)) {
-        connect(cancelButton, &QAbstractButton::clicked, this, &QDialog::reject);
-    }
+    connect(ui.buttonBox->button(QDialogButtonBox::Ok), &QAbstractButton::clicked, this, &QDialog::accept);
+    connect(ui.buttonBox->button(QDialogButtonBox::Cancel), &QAbstractButton::clicked, this, &QDialog::reject);
 
-    // make the groupboxes mutually exclusive so only one rename mode is active
+    // make the groupboxes mutually exclusive
     connect(ui.serialGroupBox, &QGroupBox::clicked, this, [this](bool checked) {
         if (!checked) {
             ui.serialGroupBox->setChecked(true);
@@ -47,7 +44,6 @@ BulkRenameDialog::BulkRenameDialog(QWidget* parent, Qt::WindowFlags flags) : QDi
     });
 
     resize(minimumSize());
-    // limit vertical resizing to keep the dialog compact
     setMaximumHeight(minimumSizeHint().height());
 }
 
@@ -62,7 +58,6 @@ void BulkRenameDialog::setState(const QString& baseName, const QString& findStr,
     ui.zeroBox->setChecked(zeroPadding);
     ui.localeBox->setChecked(respectLocale);
 
-    // only one mode can be active at a time
     if (replacement || caseChange) {
         ui.serialGroupBox->setChecked(false);
         if (replacement) {
@@ -87,14 +82,23 @@ void BulkRenameDialog::setState(const QString& baseName, const QString& findStr,
 void BulkRenameDialog::showEvent(QShowEvent* event) {
     QDialog::showEvent(event);
 
-    // when the default base name ends with '#', select everything before it
     if (ui.lineEdit->text().endsWith(QLatin1Char('#'))) {
         QTimer::singleShot(0, this, [this]() { ui.lineEdit->setSelection(0, ui.lineEdit->text().size() - 1); });
     }
 }
 
+// helper to resolve a usable name from FileInfo, respecting edit name and encoding
+static QString effectiveFileName(const std::shared_ptr<const Fm::FileInfo>& file) {
+    QString fileName = QString::fromUtf8(g_file_info_get_edit_name(file->gFileInfo().get()));
+
+    if (fileName.isEmpty()) {
+        fileName = QString::fromStdString(file->name());
+    }
+
+    return fileName;
+}
+
 BulkRenamer::BulkRenamer(const Fm::FileInfoList& files, QWidget* parent) {
-    // no point in bulk renaming a single file
     if (files.size() <= 1) {
         return;
     }
@@ -118,31 +122,25 @@ BulkRenamer::BulkRenamer(const Fm::FileInfoList& files, QWidget* parent) {
         dlg.setState(baseName, findStr, replaceStr, replacement, caseChange, zeroPadding, respectLocale, regex,
                      toUpperCase, start, cs);
 
-        switch (dlg.exec()) {
-            case QDialog::Accepted:
-                // serial rename
-                baseName = dlg.getBaseName();
-                start = dlg.getStart();
-                zeroPadding = dlg.getZeroPadding();
-                respectLocale = dlg.getRespectLocale();
-                locale = dlg.locale();
-
-                // replacement
-                replacement = dlg.getReplace();
-                findStr = dlg.getFindStr();
-                replaceStr = dlg.getReplaceStr();
-                cs = dlg.getCase();
-                regex = dlg.getRegex();
-
-                // case transformation
-                caseChange = dlg.getCaseChange();
-                toUpperCase = dlg.getUpperCase();
-                locale = dlg.locale();
-                break;
-            default:
-                // user cancelled
-                return;
+        if (dlg.exec() != QDialog::Accepted) {
+            return;
         }
+
+        baseName = dlg.getBaseName();
+        start = dlg.getStart();
+        zeroPadding = dlg.getZeroPadding();
+        respectLocale = dlg.getRespectLocale();
+        locale = dlg.locale();
+
+        replacement = dlg.getReplace();
+        findStr = dlg.getFindStr();
+        replaceStr = dlg.getReplaceStr();
+        cs = dlg.getCase();
+        regex = dlg.getRegex();
+
+        caseChange = dlg.getCaseChange();
+        toUpperCase = dlg.getUpperCase();
+        locale = dlg.locale();
 
         if (replacement) {
             showDlg = !renameByReplacing(files, findStr, replaceStr, cs, regex, parent);
@@ -154,30 +152,15 @@ BulkRenamer::BulkRenamer(const Fm::FileInfoList& files, QWidget* parent) {
     }
 }
 
-BulkRenamer::~BulkRenamer() = default;
-
-static QString effectiveFileName(const std::shared_ptr<Fm::FileInfo>& file) {
-    // use edit name to better handle non UTF-8 filenames when possible
-    auto editName = QString::fromUtf8(g_file_info_get_edit_name(file->gFileInfo().get()));
-    if (!editName.isEmpty()) {
-        return editName;
-    }
-    return QString::fromStdString(file->name());
-}
-
 bool BulkRenamer::rename(const Fm::FileInfoList& files, QString& baseName, const QLocale& locale, int start,
                          bool zeroPadding, bool respectLocale, QWidget* parent) {
-    // maximum width of the numeric counter used for padding
-    int numSpace = zeroPadding ? QString::number(start + files.size()).size() : 0;
+    const int numSpace = zeroPadding ? QString::number(start + int(files.size())).size() : 0;
 
-    // numeric padding character, optionally using the locale zero digit
     const QChar zero = respectLocale ? (!locale.zeroDigit().isEmpty() ? locale.zeroDigit().at(0) : QLatin1Char('0'))
                                      : QLatin1Char('0');
 
-    // number formatting specifier, with optional locale aware formatting
     const QString specifier = respectLocale ? QStringLiteral("%L1") : QStringLiteral("%1");
 
-    // inject a '#' placeholder if none exists so we always have a counter position
     if (!baseName.contains(QLatin1Char('#'))) {
         int end = baseName.lastIndexOf(QLatin1Char('.'));
         if (end == -1) {
@@ -195,8 +178,9 @@ bool BulkRenamer::rename(const Fm::FileInfoList& files, QString& baseName, const
     const QRegularExpression extension(QStringLiteral("\\.[^.#]+$"));
     const bool noExtension = (baseName.indexOf(extension) == -1);
 
-    for (const auto& file : files) {
+    for (auto& file : files) {
         progress.setValue(i);
+
         if (progress.wasCanceled()) {
             progress.close();
             QMessageBox::warning(parent, QObject::tr("Warning"), QObject::tr("Renaming is aborted."));
@@ -206,7 +190,6 @@ bool BulkRenamer::rename(const Fm::FileInfoList& files, QString& baseName, const
         QString fileName = effectiveFileName(file);
         QString newName = baseName;
 
-        // keep the original extension if the new pattern has none
         if (noExtension) {
             QRegularExpressionMatch match;
             if (fileName.indexOf(extension, 0, &match) > -1) {
@@ -228,7 +211,9 @@ bool BulkRenamer::rename(const Fm::FileInfoList& files, QString& baseName, const
     if (failed == i) {
         QMessageBox::critical(parent, QObject::tr("Error"), QObject::tr("No file could be renamed."));
         return false;
-    } else if (failed > 0) {
+    }
+
+    if (failed > 0) {
         QMessageBox::critical(parent, QObject::tr("Error"), QObject::tr("Some files could not be renamed."));
     }
 
@@ -258,8 +243,9 @@ bool BulkRenamer::renameByReplacing(const Fm::FileInfoList& files, const QString
     int i = 0;
     int failed = 0;
 
-    for (const auto& file : files) {
+    for (auto& file : files) {
         progress.setValue(i);
+
         if (progress.wasCanceled()) {
             progress.close();
             QMessageBox::warning(parent, QObject::tr("Warning"), QObject::tr("Renaming is aborted."));
@@ -287,7 +273,9 @@ bool BulkRenamer::renameByReplacing(const Fm::FileInfoList& files, const QString
     if (failed == i) {
         QMessageBox::critical(parent, QObject::tr("Error"), QObject::tr("No file could be renamed."));
         return false;
-    } else if (failed > 0) {
+    }
+
+    if (failed > 0) {
         QMessageBox::critical(parent, QObject::tr("Error"), QObject::tr("Some files could not be renamed."));
     }
 
@@ -302,8 +290,9 @@ bool BulkRenamer::renameByChangingCase(const Fm::FileInfoList& files, const QLoc
     int i = 0;
     int failed = 0;
 
-    for (const auto& file : files) {
+    for (auto& file : files) {
         progress.setValue(i);
+
         if (progress.wasCanceled()) {
             progress.close();
             QMessageBox::warning(parent, QObject::tr("Warning"), QObject::tr("Renaming is aborted."));
@@ -311,6 +300,7 @@ bool BulkRenamer::renameByChangingCase(const Fm::FileInfoList& files, const QLoc
         }
 
         QString fileName = effectiveFileName(file);
+
         QString newName = toUpperCase ? locale.toUpper(fileName) : locale.toLower(fileName);
 
         if (newName.isEmpty() || newName == fileName || !Fm::changeFileName(file->path(), newName, nullptr, false)) {
@@ -325,11 +315,15 @@ bool BulkRenamer::renameByChangingCase(const Fm::FileInfoList& files, const QLoc
     if (failed == i) {
         QMessageBox::critical(parent, QObject::tr("Error"), QObject::tr("No file could be renamed."));
         return false;
-    } else if (failed > 0) {
+    }
+
+    if (failed > 0) {
         QMessageBox::critical(parent, QObject::tr("Error"), QObject::tr("Some files could not be renamed."));
     }
 
     return true;
 }
+
+BulkRenamer::~BulkRenamer() = default;
 
 }  // namespace PCManFM
