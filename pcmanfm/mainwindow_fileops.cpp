@@ -12,6 +12,7 @@
 #include "application.h"
 #include "bulkrename.h"
 #include "mainwindow.h"
+#include "tabpage.h"
 
 namespace PCManFM {
 
@@ -94,9 +95,9 @@ void MainWindow::on_actionDelete_triggered() {
     const bool shiftPressed = (qApp->keyboardModifiers() & Qt::ShiftModifier);
 
     if (settings.useTrash() && !shiftPressed && !trashed) {
-        FileOperation::trashFiles(paths, settings.confirmTrash(), this);
+        Fm::FileOperation::trashFiles(paths, settings.confirmTrash(), this);
     } else {
-        FileOperation::deleteFiles(paths, settings.confirmDelete(), this);
+        Fm::FileOperation::deleteFiles(paths, settings.confirmDelete(), this);
     }
 }
 

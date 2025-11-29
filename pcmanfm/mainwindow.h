@@ -20,49 +20,45 @@
 #ifndef FM_MAIN_WINDOW_H
 #define FM_MAIN_WINDOW_H
 
-#include "ui_main-win.h"
-#include <QPointer>
-#include <QMainWindow>
-#include <QListView>
-#include <QSortFilterProxyModel>
+#include <libfm-qt6/core/bookmarks.h>
+#include <libfm-qt6/core/filepath.h>
+#include <libfm-qt6/fileoperation.h>
+#include <libfm-qt6/pathbar.h>
+#include <libfm-qt6/pathedit.h>
+#include <libfm-qt6/utilities.h>
+
 #include <QLineEdit>
-#include <QTabWidget>
+#include <QListView>
+#include <QMainWindow>
 #include <QMessageBox>
-#include <QTabBar>
-#include <QStackedWidget>
+#include <QPointer>
+#include <QSortFilterProxyModel>
 #include <QSplitter>
+#include <QStackedWidget>
+#include <QTabBar>
+#include <QTabWidget>
+
 #include "launcher.h"
 #include "tabbar.h"
-#include <libfm-qt6/core/filepath.h>
-#include <libfm-qt6/core/bookmarks.h>
-
-namespace Fm {
-class PathEdit;
-class PathBar;
-}
+#include "tabpage.h"
+#include "ui_main-win.h"
 
 namespace PCManFM {
 
 class ViewFrame : public QFrame {
     Q_OBJECT
-public:
+   public:
     ViewFrame(QWidget* parent = nullptr);
     ~ViewFrame() {};
 
     void createTopBar(bool usePathButtons);
     void removeTopBar();
 
-    QWidget* getTopBar() const {
-        return topBar_;
-    }
-    TabBar* getTabBar() const {
-        return tabBar_;
-    }
-    QStackedWidget* getStackedWidget() const {
-        return stackedWidget_;
-    }
+    QWidget* getTopBar() const { return topBar_; }
+    TabBar* getTabBar() const { return tabBar_; }
+    QStackedWidget* getStackedWidget() const { return stackedWidget_; }
 
-private:
+   private:
     QWidget* topBar_;
     TabBar* tabBar_;
     QStackedWidget* stackedWidget_;
@@ -70,19 +66,16 @@ private:
 
 //======================================================================
 
-class TabPage;
 class Settings;
 
 class MainWindow : public QMainWindow {
     Q_OBJECT
-public:
+   public:
     MainWindow(Fm::FilePath path = Fm::FilePath());
     virtual ~MainWindow();
 
     void chdir(Fm::FilePath path, ViewFrame* viewFrame);
-    void chdir(Fm::FilePath path) {
-        chdir(path, activeViewFrame_);
-    }
+    void chdir(Fm::FilePath path) { chdir(path, activeViewFrame_); }
 
     void addTab(Fm::FilePath path, ViewFrame* viewFrame);
     void addTab(Fm::FilePath path);
@@ -90,23 +83,19 @@ public:
     TabPage* currentPage(ViewFrame* viewFrame) {
         return reinterpret_cast<TabPage*>(viewFrame->getStackedWidget()->currentWidget());
     }
-    TabPage* currentPage() {
-        return currentPage(activeViewFrame_);
-    }
+    TabPage* currentPage() { return currentPage(activeViewFrame_); }
 
     void updateFromSettings(Settings& settings);
 
-    static MainWindow* lastActive() {
-        return lastActive_;
-    }
+    static MainWindow* lastActive() { return lastActive_; }
 
     void openFolderAndSelectFiles(const Fm::FilePathList& files, bool inNewTab = true);
 
-protected Q_SLOTS:
+   protected Q_SLOTS:
 
     void onPathEntryReturnPressed();
     void onPathBarChdir(const Fm::FilePath& dirPath);
-    void onPathBarMiddleClickChdir(const Fm::FilePath &dirPath);
+    void onPathBarMiddleClickChdir(const Fm::FilePath& dirPath);
 
     void on_actionNewTab_triggered();
     void on_actionNewWin_triggered();
@@ -202,11 +191,11 @@ protected Q_SLOTS:
     void onTabPageStatusChanged(int type, QString statusText);
     void onTabPageSortFilterChanged();
 
-    void onSidePaneChdirRequested(int type, const Fm::FilePath &path);
-    void onSidePaneOpenFolderInNewWindowRequested(const Fm::FilePath &path);
-    void onSidePaneOpenFolderInNewTabRequested(const Fm::FilePath &path);
-    void onSidePaneOpenFolderInTerminalRequested(const Fm::FilePath &path);
-    void onSidePaneCreateNewFolderRequested(const Fm::FilePath &path);
+    void onSidePaneChdirRequested(int type, const Fm::FilePath& path);
+    void onSidePaneOpenFolderInNewWindowRequested(const Fm::FilePath& path);
+    void onSidePaneOpenFolderInNewTabRequested(const Fm::FilePath& path);
+    void onSidePaneOpenFolderInTerminalRequested(const Fm::FilePath& path);
+    void onSidePaneCreateNewFolderRequested(const Fm::FilePath& path);
     void onSidePaneModeChanged(Fm::SidePane::Mode mode);
     void on_actionSidePane_triggered(bool check);
     void onSplitterMoved(int pos, int index);
@@ -237,20 +226,18 @@ protected Q_SLOTS:
 
     void on_actionCleanPerFolderConfig_triggered();
 
-protected:
+   protected:
     bool event(QEvent* event) override;
     void changeEvent(QEvent* event) override;
     void closeTab(int index, ViewFrame* viewFrame);
-    void closeTab(int index) {
-        closeTab(index, activeViewFrame_);
-    }
+    void closeTab(int index) { closeTab(index, activeViewFrame_); }
     virtual void resizeEvent(QResizeEvent* event) override;
     virtual void closeEvent(QCloseEvent* event) override;
     virtual void dragEnterEvent(QDragEnterEvent* event) override;
     virtual void dropEvent(QDropEvent* event) override;
     virtual bool eventFilter(QObject* watched, QEvent* event) override;
 
-private:
+   private:
     void loadBookmarksMenu();
     void updateUIForCurrentPage(bool setFocus = true);
     void updateViewMenuForCurrentPage();
@@ -264,7 +251,7 @@ private:
     void dropTab(QObject* source);
     void setTabIcon(TabPage* tabPage);
 
-private:
+   private:
     Ui::MainWindow ui;
     Fm::PathEdit* pathEntry_;
     Fm::PathBar* pathBar_;
@@ -281,11 +268,11 @@ private:
     // not from another window. So, we get the mode at the start and keep it.
     bool splitView_;
 
-    int splitTabsNum_; // number of tabs to be restored from the first view frame of the last window
+    int splitTabsNum_;  // number of tabs to be restored from the first view frame of the last window
 
     static QPointer<MainWindow> lastActive_;
 };
 
-}
+}  // namespace PCManFM
 
-#endif // FM_MAIN_WINDOW_H
+#endif  // FM_MAIN_WINDOW_H

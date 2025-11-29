@@ -8,6 +8,7 @@
 #include "application.h"
 #include "mainwindow.h"
 #include "tabbar.h"
+#include "tabpage.h"
 
 namespace PCManFM {
 
@@ -63,13 +64,13 @@ void MainWindow::dropTab(QObject* source) {
     // then add its page to a new tab in the drop window
     TabPage* dropPage = dragSource->currentPage();
     if (dropPage) {
-        disconnect(dropPage, nullptr, dragSource, nullptr);
+        disconnect(static_cast<QObject*>(dropPage), nullptr, dragSource, nullptr);
 
         // release mouse before tab removal because otherwise, the source tabbar
         // might not be updated properly with tab reordering during a fast drag-and-drop
         dragSource->activeViewFrame_->getTabBar()->releaseMouse();
 
-        dragSource->activeViewFrame_->getStackedWidget()->removeWidget(dropPage);
+        dragSource->activeViewFrame_->getStackedWidget()->removeWidget(static_cast<QWidget*>(dropPage));
         const int index = addTabWithPage(dropPage, activeViewFrame_);
         activeViewFrame_->getTabBar()->setCurrentIndex(index);
     } else {
@@ -94,10 +95,10 @@ void MainWindow::detachTab() {
     // close the tab and move its page to a new window
     TabPage* dropPage = currentPage();
     if (dropPage) {
-        disconnect(dropPage, nullptr, this, nullptr);
+        disconnect(static_cast<QObject*>(dropPage), nullptr, this, nullptr);
 
         activeViewFrame_->getTabBar()->releaseMouse();  // as in dropTab()
-        activeViewFrame_->getStackedWidget()->removeWidget(dropPage);
+        activeViewFrame_->getStackedWidget()->removeWidget(static_cast<QWidget*>(dropPage));
 
         auto* newWin = new MainWindow();
         newWin->addTabWithPage(dropPage, newWin->activeViewFrame_);

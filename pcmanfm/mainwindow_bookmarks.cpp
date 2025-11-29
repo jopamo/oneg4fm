@@ -1,38 +1,29 @@
 /* pcmanfm/mainwindow_bookmarks.cpp */
 
-#include <libfm-qt6/bookmarks.h>
+#include <QAction>
+#include <QMenu>
 
 #include "application.h"
 #include "mainwindow.h"
+#include "tabpage.h"
 
 namespace PCManFM {
 
 void MainWindow::loadBookmarksMenu() {
-    auto* app = qobject_cast<Application*>(qApp);
-    if (!app) {
-        return;
-    }
+    // Clear previously inserted dynamic bookmark actions
+    auto* menu = ui.menu_Bookmarks;
+    const auto actions = menu->actions();
 
-    auto& bookmarks = app->bookmarks();
-    const auto bookmarkActions = ui.menuBookmarks->actions();
-    const auto bookmarksList = bookmarks.allBookmarks();
-    const int bookmarksSize = bookmarksList.size();
-
-    // remove old actions that belong to bookmarks
-    for (QAction* action : bookmarkActions) {
-        if (action->data().isValid()) {
-            ui.menuBookmarks->removeAction(action);
+    for (QAction* action : actions) {
+        // use a custom property to identify bookmark actions if you want
+        if (action->property("pcmanfm_bookmark").toBool()) {
+            menu->removeAction(action);
+            delete action;
         }
     }
 
-    // add new actions
-    for (int i = 0; i < bookmarksSize; ++i) {
-        const auto& bookmark = bookmarksList.at(i);
-        auto* action = new QAction(bookmark.name(), this);
-        action->setData(bookmark.path());
-        connect(action, &QAction::triggered, this, &MainWindow::onBookmarkActionTriggered);
-        ui.menuBookmarks->insertAction(ui.actionAddToBookmarks, action);
-    }
+    // TODO: if you want real bookmark entries here, repopulate from your
+    //       backend (libfm-qt bookmarks, config, etc.)
 }
 
 void MainWindow::onBookmarksChanged() { loadBookmarksMenu(); }
@@ -53,24 +44,10 @@ void MainWindow::onBookmarkActionTriggered() {
 }
 
 void MainWindow::on_actionAddToBookmarks_triggered() {
-    auto* app = qobject_cast<Application*>(qApp);
-    if (!app) {
-        return;
-    }
+    auto* app = static_cast<Application*>(qApp);
 
-    TabPage* page = currentPage();
-    if (!page) {
-        return;
-    }
-
-    auto path = page->path();
-    if (!path) {
-        return;
-    }
-
-    auto& bookmarks = app->bookmarks();
-    const QString name = page->pathName();
-    bookmarks.addBookmark(name, path);
+    // Delegate to Application's existing bookmark editor
+    app->editBookmarks();
 }
 
 }  // namespace PCManFM

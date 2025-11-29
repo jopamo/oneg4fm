@@ -2,6 +2,16 @@ set(pcmanfm_SRCS
     application.cpp
     pcmanfm.cpp
     mainwindow.cpp
+    mainwindow_viewframe.cpp
+    mainwindow_tabs.cpp
+    mainwindow_fileops.cpp
+    mainwindow_navigation.cpp
+    mainwindow_view.cpp
+    mainwindow_pathbar.cpp
+    mainwindow_menus.cpp
+    mainwindow_bookmarks.cpp
+    mainwindow_dragdrop.cpp
+    mainwindow_events.cpp
     tabpage.cpp
     tabbar.cpp
     statusbar.cpp
@@ -78,6 +88,7 @@ target_compile_definitions(pcmanfm-qt
 target_include_directories(pcmanfm-qt
     PRIVATE
         "${Qt6Gui_PRIVATE_INCLUDE_DIRS}"
+        "${CMAKE_CURRENT_BINARY_DIR}/pcmanfm-qt_autogen/include"
 )
 
 target_link_libraries(pcmanfm-qt

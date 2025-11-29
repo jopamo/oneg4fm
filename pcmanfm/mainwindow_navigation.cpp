@@ -104,7 +104,7 @@ void MainWindow::on_actionOpenAsAdmin_triggered() {
     if (TabPage* page = currentPage()) {
         if (auto path = page->path()) {
             if (path.isNative()) {
-                CStrPtr admin{g_strconcat("admin://", path.localPath().get(), nullptr)};
+                Fm::CStrPtr admin{g_strconcat("admin://", path.localPath().get(), nullptr)};
                 chdir(Fm::FilePath::fromPathStr(admin.get()));
             }
         }
