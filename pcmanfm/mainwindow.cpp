@@ -116,6 +116,9 @@ MainWindow::MainWindow(Fm::FilePath path)
     // Add initial view frame
     addViewFrame(path);
 
+    // Create the path bar/location bar
+    createPathBar(appSettings().pathBarButtons());
+
     setWindowTitle(QStringLiteral("PCManFM-Qt"));
 
     deleteShortcut_ = new QShortcut(QKeySequence(Qt::Key_Delete), this);
