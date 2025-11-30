@@ -1,3 +1,8 @@
+/*
+ * Connect to server dialog implementation
+ * pcmanfm/connectserverdialog.cpp
+ */
+
 #include "connectserverdialog.h"
 
 #include <QComboBox>
