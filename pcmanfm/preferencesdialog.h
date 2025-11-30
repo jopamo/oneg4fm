@@ -1,29 +1,15 @@
 /*
-
-    Copyright (C) 2013  Hong Jen Yee (PCMan) <pcman.tw@gmail.com>
-
-    This program is free software; you can redistribute it and/or modify
-    it under the terms of the GNU General Public License as published by
-    the Free Software Foundation; either version 2 of the License, or
-    (at your option) any later version.
-
-    This program is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
-
-    You should have received a copy of the GNU General Public License along
-    with this program; if not, write to the Free Software Foundation, Inc.,
-    51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
-*/
-
+ * Preferences dialog header
+ * pcmanfm/preferencesdialog.h
+ */
 
 #ifndef PCMANFM_PREFERENCESDIALOG_H
 #define PCMANFM_PREFERENCESDIALOG_H
 
 #include <QDialog>
-#include "ui_preferences.h"
 #include <QString>
+
+#include "ui_preferences.h"
 
 namespace PCManFM {
 
@@ -32,7 +18,7 @@ class Settings;
 class PreferencesDialog : public QDialog {
     Q_OBJECT
 
-public:
+   public:
     // activePage is the name of page to select (general, display, advanced...)
     explicit PreferencesDialog(const QString& activePage = QString(), QWidget* parent = nullptr);
     virtual ~PreferencesDialog();
@@ -41,13 +27,13 @@ public:
 
     void selectPage(const QString& name);
 
-protected Q_SLOTS:
+   protected Q_SLOTS:
     void lockMargins(bool lock);
     void terminalChanged(int index);
     void terminalContextMenu(const QPoint& p);
     void applySettings();
 
-private:
+   private:
     void initIconThemes(Settings& settings);
     void initArchivers(Settings& settings);
     void initDisplayPage(Settings& settings);
@@ -71,11 +57,11 @@ private:
 
     void restartWarning(bool warn);
 
-private:
+   private:
     Ui::PreferencesDialog ui;
     int warningCounter_;
 };
 
-}
+}  // namespace PCManFM
 
-#endif // PCMANFM_PREFERENCESDIALOG_H
+#endif  // PCMANFM_PREFERENCESDIALOG_H
