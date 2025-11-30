@@ -546,6 +546,80 @@ const QList<int>& Settings::iconSizes(IconType type) {
     }
 }
 
+// String conversion member functions
+const char* Settings::viewModeToString(Fm::FolderView::ViewMode value) {
+    const char* ret;
+    switch (value) {
+        case Fm::FolderView::IconMode:
+        default:
+            ret = "icon";
+            break;
+        case Fm::FolderView::CompactMode:
+            ret = "compact";
+            break;
+        case Fm::FolderView::DetailedListMode:
+            ret = "detailed";
+            break;
+        case Fm::FolderView::ThumbnailMode:
+            ret = "thumbnail";
+            break;
+    }
+    return ret;
+}
+
+const char* Settings::sortOrderToString(Qt::SortOrder order) {
+    return (order == Qt::DescendingOrder ? "descending" : "ascending");
+}
+
+const char* Settings::sortColumnToString(Fm::FolderModel::ColumnId value) {
+    const char* ret;
+    switch (value) {
+        case Fm::FolderModel::ColumnFileName:
+        default:
+            ret = "name";
+            break;
+        case Fm::FolderModel::ColumnFileType:
+            ret = "type";
+            break;
+        case Fm::FolderModel::ColumnFileSize:
+            ret = "size";
+            break;
+        case Fm::FolderModel::ColumnFileMTime:
+            ret = "mtime";
+            break;
+        case Fm::FolderModel::ColumnFileCrTime:
+            ret = "crtime";
+            break;
+        case Fm::FolderModel::ColumnFileDTime:
+            ret = "dtime";
+            break;
+        case Fm::FolderModel::ColumnFileOwner:
+            ret = "owner";
+            break;
+        case Fm::FolderModel::ColumnFileGroup:
+            ret = "group";
+            break;
+    }
+    return ret;
+}
+
+const char* Settings::sidePaneModeToString(Fm::SidePane::Mode value) {
+    const char* ret;
+    switch (value) {
+        case Fm::SidePane::ModePlaces:
+        default:
+            ret = "places";
+            break;
+        case Fm::SidePane::ModeDirTree:
+            ret = "dirtree";
+            break;
+        case Fm::SidePane::ModeNone:
+            ret = "none";
+            break;
+    }
+    return ret;
+}
+
 int Settings::toIconSize(int size, IconType type) const {
     const QList<int>& sizes = iconSizes(type);
     for (const auto& s : sizes) {
