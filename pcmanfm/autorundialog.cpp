@@ -1,14 +1,30 @@
+/*
+ * Auto-run dialog implementation for PCManFM-Qt
+ * pcmanfm/autorundialog.cpp
+ */
+
 #include "autorundialog.h"
 
+// LibFM-Qt Headers
 #include <libfm-qt6/core/filepath.h>
 #include <libfm-qt6/core/iconinfo.h>
 
+// Qt Headers
+#include <QIcon>
 #include <QListWidgetItem>
 
+// Local Headers
 #include "application.h"
 #include "mainwindow.h"
 
 namespace PCManFM {
+
+namespace {
+
+// Helper to access Application settings concisely
+Settings& appSettings() { return static_cast<Application*>(qApp)->settings(); }
+
+}  // namespace
 
 AutoRunDialog::AutoRunDialog(GVolume* volume, GMount* mount, QWidget* parent, Qt::WindowFlags f)
     : QDialog(parent, f),
@@ -44,8 +60,10 @@ AutoRunDialog::AutoRunDialog(GVolume* volume, GMount* mount, QWidget* parent, Qt
 
 AutoRunDialog::~AutoRunDialog() {
     // free the application list and unref each GAppInfo
-    g_list_free_full(applications, g_object_unref);
-    applications = nullptr;
+    if (applications) {
+        g_list_free_full(applications, g_object_unref);
+        applications = nullptr;
+    }
 
     if (mount_) {
         g_object_unref(mount_);
@@ -86,33 +104,54 @@ void AutoRunDialog::accept() {
 
     void* p = item->data(Qt::UserRole).value<void*>();
     if (p) {
-        // run the selected application on the mount root
-        GAppInfo* app = G_APP_INFO(p);
-        GList* filelist = g_list_prepend(nullptr, gf);
-        g_app_info_launch(app, filelist, nullptr, nullptr);
-        g_list_free(filelist);
+        launchSelectedApp(static_cast<GAppInfo*>(p), gf);
     } else {
-        // default action: open the mounted folder in the file manager
-        auto* app = static_cast<Application*>(qApp);
-        Settings& settings = app->settings();
-        Fm::FilePath path{gf, true};
-
-        // open the path in a new main window using the configured initial geometry
-        auto* win = new MainWindow(path);
-        win->resize(settings.windowWidth(), settings.windowHeight());
-        if (settings.windowMaximized()) {
-            win->setWindowState(win->windowState() | Qt::WindowMaximized);
-        }
-        win->show();
+        openInFileManager(gf);
     }
 
     g_object_unref(gf);
     QDialog::accept();
 }
 
+void AutoRunDialog::launchSelectedApp(GAppInfo* app, GFile* mountRoot) {
+    if (!app || !mountRoot) return;
+
+    GList* filelist = g_list_prepend(nullptr, mountRoot);
+    GError* error = nullptr;
+
+    if (!g_app_info_launch(app, filelist, nullptr, &error)) {
+        if (error) {
+            qWarning() << "Failed to launch app:" << error->message;
+            g_error_free(error);
+        }
+    }
+    g_list_free(filelist);
+}
+
+void AutoRunDialog::openInFileManager(GFile* mountRoot) {
+    if (!mountRoot) return;
+
+    Settings& settings = appSettings();
+
+    // Construct FilePath from GFile, taking ownership (ref/unref logic handled by FilePath)
+    Fm::FilePath path{mountRoot, true};
+
+    // open the path in a new main window using the configured initial geometry
+    auto* win = new MainWindow(path);
+    win->resize(settings.windowWidth(), settings.windowHeight());
+
+    if (settings.windowMaximized()) {
+        win->setWindowState(win->windowState() | Qt::WindowMaximized);
+    }
+
+    win->show();
+}
+
 // static
 void AutoRunDialog::onContentTypeFinished(GMount* mount, GAsyncResult* res, AutoRunDialog* pThis) {
     Q_UNUSED(mount);
+
+    if (!pThis) return;
 
     // once the async query is complete we no longer need the cancellable
     if (pThis->cancellable) {
@@ -140,10 +179,21 @@ void AutoRunDialog::onContentTypeFinished(GMount* mount, GAsyncResult* res, Auto
         // populate the list widget with per-application actions
         if (pThis->applications) {
             int pos = 0;
-            for (GList* l = pThis->applications; l; l = l->next, ++pos) {
+            // Iterate safely through GList
+            for (GList* l = pThis->applications; l; l = l->next) {
                 GAppInfo* app = G_APP_INFO(l->data);
+
+                // Avoid duplicates or invalid apps
+                if (!app) continue;
+
                 GIcon* gicon = g_app_info_get_icon(app);
-                QIcon icon = Fm::IconInfo::fromGIcon(gicon)->qicon();
+                QIcon icon;
+                if (gicon) {
+                    icon = Fm::IconInfo::fromGIcon(gicon)->qicon();
+                } else {
+                    icon = QIcon::fromTheme(QStringLiteral("application-x-executable"));
+                }
+
                 QString text = QString::fromUtf8(g_app_info_get_name(app));
 
                 auto* item = new QListWidgetItem(icon, text);
@@ -151,7 +201,13 @@ void AutoRunDialog::onContentTypeFinished(GMount* mount, GAsyncResult* res, Auto
                 // the lifetime is managed by the applications GList and freed in the destructor
                 item->setData(Qt::UserRole, QVariant::fromValue(static_cast<void*>(app)));
 
+                // Insert at the beginning (before the file manager default option, or strictly as found)
+                // Using 'pos' to insert before the default item if desired, or simply append.
+                // Here we insert before existing items to prioritize apps?
+                // Original code used 'pos' which was incremented. It inserts at index 0, 1, 2...
+                // pushing the "Open in file manager" (added in ctor) down.
                 pThis->ui.listWidget->insertItem(pos, item);
+                pos++;
             }
         }
     }
@@ -160,12 +216,12 @@ void AutoRunDialog::onContentTypeFinished(GMount* mount, GAsyncResult* res, Auto
         pThis->ui.mediumType->setText(QString::fromUtf8(desc));
         g_free(desc);
     } else {
-        pThis->ui.mediumType->setText(QObject::tr("Removable Disk"));
+        pThis->ui.mediumType->setText(tr("Removable Disk"));
     }
 
     // select the first item so there is always a default choice
     if (pThis->ui.listWidget->count() > 0) {
-        pThis->ui.listWidget->item(0)->setSelected(true);
+        pThis->ui.listWidget->setCurrentRow(0);
     }
 }
 
