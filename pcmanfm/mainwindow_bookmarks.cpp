@@ -1,4 +1,7 @@
-/* pcmanfm/mainwindow_bookmarks.cpp */
+/*
+ * Description of file
+ * pcmanfm/mainwindow_bookmarks.cpp
+ */
 
 #include <QAction>
 #include <QDir>

@@ -10,7 +10,9 @@
 #include <libfm-qt6/mountoperation.h>
 #include <signal.h>
 #include <sys/socket.h>
+#include <unistd.h>
 
+#include <QApplication>
 #include <QCommandLineParser>
 #include <QDBusConnection>
 #include <QDBusConnectionInterface>
@@ -18,11 +20,14 @@
 #include <QDir>
 #include <QFile>
 #include <QFileSystemWatcher>
+#include <QIcon>
 #include <QLibraryInfo>
 #include <QLocale>
 #include <QMessageBox>
+#include <QSessionManager>
 #include <QSocketNotifier>
 #include <QStandardPaths>
+#include <QTimer>
 #include <QVector>
 #include <algorithm>
 #include <unordered_map>
@@ -43,9 +48,9 @@ static const char* ifaceName = "org.pcmanfm.Application";
 
 int ProxyStyle::styleHint(StyleHint hint, const QStyleOption* option, const QWidget* widget,
                           QStyleHintReturn* returnData) const {
-    auto* app = static_cast<Application*>(qApp);
+    auto* app = qobject_cast<Application*>(qApp);
 
-    if (hint == QStyle::SH_ItemView_ActivateItemOnSingleClick) {
+    if (hint == QStyle::SH_ItemView_ActivateItemOnSingleClick && app) {
         if (app->settings().singleClick()) {
             return true;
         }
@@ -75,7 +80,6 @@ Application::Application(int& argc, char** argv)
 
     QDBusConnection dbus = QDBusConnection::sessionBus();
     if (dbus.registerService(QLatin1String(serviceName))) {
-        // this process owns the org.pcmanfm.PCManFM name and is the primary instance
         isPrimaryInstance = true;
 
         setStyle(new ProxyStyle());
@@ -88,20 +92,25 @@ Application::Application(int& argc, char** argv)
         // aboutToQuit() is not emitted on SIGTERM, so install a handler that shuts down cleanly
         installSigtermHandler();
 
-        // also try to provide the standard org.freedesktop.FileManager1 interface
-        static const QString fileManagerService = QStringLiteral("org.freedesktop.FileManager1");
-        connect(dbus.interface(), &QDBusConnectionInterface::serviceRegistered, this, [this](const QString& service) {
-            static const QString fileManagerService = QStringLiteral("org.freedesktop.FileManager1");
-            if (fileManagerService == service) {
-                QDBusConnection dbus = QDBusConnection::sessionBus();
-                disconnect(dbus.interface(), &QDBusConnectionInterface::serviceRegistered, this, nullptr);
-                new ApplicationAdaptorFreeDesktopFileManager(this);
-                if (!dbus.registerObject(QStringLiteral("/org/freedesktop/FileManager1"), this)) {
-                    qDebug() << "Can't register /org/freedesktop/FileManager1:" << dbus.lastError().message();
-                }
-            }
-        });
-        dbus.interface()->registerService(fileManagerService, QDBusConnectionInterface::QueueService);
+        // also provide the standard org.freedesktop.FileManager1 interface if possible
+        const QString fileManagerService = QStringLiteral("org.freedesktop.FileManager1");
+        if (auto* iface = dbus.interface()) {
+            connect(iface, &QDBusConnectionInterface::serviceRegistered, this,
+                    [this, fileManagerService](const QString& service) {
+                        if (fileManagerService == service) {
+                            QDBusConnection dbus = QDBusConnection::sessionBus();
+                            if (auto* iface = dbus.interface()) {
+                                disconnect(iface, &QDBusConnectionInterface::serviceRegistered, this, nullptr);
+                            }
+                            new ApplicationAdaptorFreeDesktopFileManager(this);
+                            if (!dbus.registerObject(QStringLiteral("/org/freedesktop/FileManager1"), this)) {
+                                qDebug() << "Can't register /org/freedesktop/FileManager1:"
+                                         << dbus.lastError().message();
+                            }
+                        }
+                    });
+            iface->registerService(fileManagerService, QDBusConnectionInterface::QueueService);
+        }
     } else {
         // another instance already owns org.pcmanfm.PCManFM, this one acts as a client
         isPrimaryInstance = false;
@@ -328,7 +337,10 @@ void Application::onSaveStateRequest(QSessionManager& /*manager*/) {
 }
 
 void Application::onFindFileAccepted() {
-    auto* dlg = static_cast<Fm::FileSearchDialog*>(sender());
+    auto* dlg = qobject_cast<Fm::FileSearchDialog*>(sender());
+    if (!dlg) {
+        return;
+    }
 
     // persist search settings for future sessions
     settings_.setSearchNameCaseInsensitive(dlg->nameCaseInsensitive());
@@ -348,7 +360,11 @@ void Application::onFindFileAccepted() {
 }
 
 void Application::onConnectToServerAccepted() {
-    auto* dlg = static_cast<ConnectServerDialog*>(sender());
+    auto* dlg = qobject_cast<ConnectServerDialog*>(sender());
+    if (!dlg) {
+        return;
+    }
+
     const QString uri = dlg->uriText();
 
     Fm::FilePathList paths;
@@ -398,7 +414,7 @@ void Application::launchFiles(const QString& cwd, const QStringList& paths, bool
     }
 
     for (const QString& it : std::as_const(effectivePaths)) {
-        QByteArray pathName = it.toLocal8Bit();
+        const QByteArray pathName = it.toLocal8Bit();
         Fm::FilePath path;
 
         if (pathName == "~") {
@@ -442,7 +458,7 @@ void Application::launchFiles(const QString& cwd, const QStringList& paths, bool
             settings_.setSplitViewTabsNum(0);
         }
 
-        auto launcher = Launcher(window);
+        Launcher launcher(window);
         launcher.openInNewTab();
         launcher.launchPaths(nullptr, pathList);
     } else {
@@ -482,7 +498,7 @@ void Application::openFolderInTerminal(Fm::FilePath path) {
         }
     } else {
         // the terminal command is not configured yet, guide the user to the preferences
-        QMessageBox::critical(nullptr, tr("Error"), tr("Terminal emulator is not set."));
+        QMessageBox::critical(nullptr, tr("Error"), tr("Terminal emulator is not set"));
         preferences(QStringLiteral("advanced"));
     }
 }
@@ -503,7 +519,9 @@ void Application::preferences(const QString& page) {
 /* This method receives a list of file:// URIs from DBus and for each URI opens
  * a tab showing its content
  */
-void Application::ShowFolders(const QStringList& uriList, const QString& startupId __attribute__((unused))) {
+void Application::ShowFolders(const QStringList& uriList, const QString& startupId) {
+    Q_UNUSED(startupId);
+
     if (!uriList.isEmpty()) {
         launchFiles(QDir::currentPath(), uriList, false, false);
     }
@@ -512,16 +530,19 @@ void Application::ShowFolders(const QStringList& uriList, const QString& startup
 /* This method receives a list of file:// URIs from DBus and opens windows
  * or tabs for each folder, highlighting all listed items within each
  */
-void Application::ShowItems(const QStringList& uriList, const QString& startupId __attribute__((unused))) {
+void Application::ShowItems(const QStringList& uriList, const QString& startupId) {
+    Q_UNUSED(startupId);
+
     std::unordered_map<Fm::FilePath, Fm::FilePathList, Fm::FilePathHash> groups;
     Fm::FilePathList folders;  // used only for preserving the original parent order
 
     for (const auto& u : uriList) {
-        if (auto path = Fm::FilePath::fromPathStr(u.toStdString().c_str())) {
+        const QByteArray utf8 = u.toUtf8();
+        if (auto path = Fm::FilePath::fromPathStr(utf8.constData())) {
             if (auto parent = path.parent()) {
-                auto paths = groups[parent];
+                auto& paths = groups[parent];
                 if (std::find(paths.cbegin(), paths.cend(), path) == paths.cend()) {
-                    groups[parent].push_back(std::move(path));
+                    paths.push_back(std::move(path));
                 }
                 // remember the order of parent folders
                 if (std::find(folders.cbegin(), folders.cend(), parent) == folders.cend()) {
@@ -535,7 +556,7 @@ void Application::ShowItems(const QStringList& uriList, const QString& startupId
         return;
     }
 
-    PCManFM::MainWindow* window = nullptr;
+    MainWindow* window = nullptr;
 
     if (settings_.singleWindowMode()) {
         window = MainWindow::lastActive();
@@ -568,11 +589,14 @@ void Application::ShowItems(const QStringList& uriList, const QString& startupId
 /* This method receives a list of file:// URIs from DBus and
  * for each valid URI opens a property dialog showing its information
  */
-void Application::ShowItemProperties(const QStringList& uriList, const QString& startupId __attribute__((unused))) {
+void Application::ShowItemProperties(const QStringList& uriList, const QString& startupId) {
+    Q_UNUSED(startupId);
+
     // resolve URIs into paths and show a properties dialog for each item
     Fm::FilePathList paths;
     for (const auto& u : uriList) {
-        Fm::FilePath path = Fm::FilePath::fromPathStr(u.toStdString().c_str());
+        const QByteArray utf8 = u.toUtf8();
+        Fm::FilePath path = Fm::FilePath::fromPathStr(utf8.constData());
         if (path) {
             paths.push_back(std::move(path));
         }
@@ -588,7 +612,11 @@ void Application::ShowItemProperties(const QStringList& uriList, const QString& 
 }
 
 void Application::onPropJobFinished() {
-    auto* job = static_cast<Fm::FileInfoJob*>(sender());
+    auto* job = qobject_cast<Fm::FileInfoJob*>(sender());
+    if (!job) {
+        return;
+    }
+
     for (auto file : job->files()) {
         auto* dialog = Fm::FilePropsDialog::showForFile(std::move(file));
         dialog->raise();
@@ -696,25 +724,27 @@ void Application::installSigtermHandler() {
 }
 
 void Application::onSigtermNotified() {
-    if (auto* notifier = qobject_cast<QSocketNotifier*>(sender())) {
-        notifier->setEnabled(false);
-
-        char c;
-        auto readCount = ::read(sigterm_fd[1], &c, sizeof(c));
-        Q_UNUSED(readCount);
-
-        // close all main windows cleanly before quitting
-        const auto windows = topLevelWidgets();
-        for (auto* win : windows) {
-            if (win->inherits("PCManFM::MainWindow")) {
-                auto* mainWindow = static_cast<MainWindow*>(win);
-                mainWindow->close();
-            }
-        }
-
-        quit();
-        notifier->setEnabled(true);
+    auto* notifier = qobject_cast<QSocketNotifier*>(sender());
+    if (!notifier) {
+        return;
     }
+
+    notifier->setEnabled(false);
+
+    char c;
+    auto readCount = ::read(sigterm_fd[1], &c, sizeof(c));
+    Q_UNUSED(readCount);
+
+    // close all main windows cleanly before quitting
+    const auto windows = topLevelWidgets();
+    for (auto* win : windows) {
+        if (win->inherits("PCManFM::MainWindow")) {
+            auto* mainWindow = static_cast<MainWindow*>(win);
+            mainWindow->close();
+        }
+    }
+
+    quit();
 }
 
 }  // namespace PCManFM
