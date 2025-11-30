@@ -241,6 +241,15 @@ class MainWindow : public QMainWindow {
     virtual bool eventFilter(QObject* watched, QEvent* event) override;
 
    private:
+    template <typename Func>
+    void forEachTabPageLocal(Func func);
+
+    template <typename Func>
+    void forEachTabPageGlobal(Func func);
+
+    void handleFocusIn(QWidget* watchedWidget);
+    bool handleTabKey(QKeyEvent* ke, QWidget* watchedWidget);
+
     void loadBookmarksMenu();
     void updateUIForCurrentPage(bool setFocus = true);
     void updateViewMenuForCurrentPage();
@@ -248,6 +257,8 @@ class MainWindow : public QMainWindow {
     void updateStatusBarForCurrentPage();
     void setRTLIcons(bool isRTL);
     void createPathBar(bool usePathButtons);
+    void createSplitViewPathBar(bool usePathButtons);
+    void createSingleViewPathBar(bool usePathButtons);
     void addViewFrame(const Fm::FilePath& path);
     ViewFrame* viewFrameForTabPage(TabPage* page);
     int addTabWithPage(TabPage* page, ViewFrame* viewFrame, Fm::FilePath path = Fm::FilePath());
