@@ -1,5 +1,11 @@
+/*
+ * Custom tab bar implementation for PCManFM-Qt
+ * pcmanfm/tabbar.cpp
+ */
+
 #include "tabbar.h"
 
+// Qt Headers
 #include <QApplication>
 #include <QDrag>
 #include <QMimeData>
@@ -10,8 +16,9 @@
 namespace PCManFM {
 
 namespace {
-constexpr auto tabMimeType = "application/pcmanfm-qt-tab";
-}
+// Use QStringLiteral for MIME type to avoid runtime allocation
+const QString kTabMimeType = QStringLiteral("application/pcmanfm-qt-tab");
+}  // namespace
 
 const char* TabBar::tabDropped = "_pcmanfm_tab_dropped";
 
@@ -48,67 +55,72 @@ void TabBar::mouseMoveEvent(QMouseEvent* event) {
         dragStarted_ = true;
     }
 
+    // Check if dragging OUT of the window geometry
     if ((event->buttons() & Qt::LeftButton) && dragStarted_ &&
         !window()->geometry().contains(event->globalPosition().toPoint())) {
-        if (currentIndex() == -1) {
-            return;
+        handleTabDrag(event);
+    } else {
+        QTabBar::mouseMoveEvent(event);
+    }
+}
+
+void TabBar::handleTabDrag(QMouseEvent* event) {
+    if (currentIndex() == -1) {
+        return;
+    }
+
+    // To be safe on Wayland and X11, the tab is only detached or dropped
+    // *after* the drag operation finishes.
+    // See MainWindow::dropEvent and the queued connection to TabBar::tabDetached
+
+    QPointer<QDrag> drag = new QDrag(this);
+    auto* mimeData = new QMimeData;
+    mimeData->setData(kTabMimeType, QByteArray());
+    drag->setMimeData(mimeData);
+
+    const int tabCountBefore = count();
+    const Qt::DropAction result = drag->exec(Qt::MoveAction);
+
+    if (result != Qt::MoveAction) {
+        // No PCManFM-Qt window accepted the drop
+        // Detach the tab if more than one tab is present, otherwise cancel cleanly
+        if (tabCountBefore > 1) {
+            Q_EMIT tabDetached();
+        } else {
+            finishMouseMoveEvent();
         }
-
-        // To be safe on Wayland and X11, the tab is only detached or dropped
-        // *after* the drag operation finishes
-        // See MainWindow::dropEvent and the queued connection to TabBar::tabDetached
-
-        QPointer<QDrag> drag = new QDrag(this);
-        auto* mimeData = new QMimeData;
-        mimeData->setData(QString::fromLatin1(tabMimeType), QByteArray());
-        drag->setMimeData(mimeData);
-
-        const int tabCountBefore = count();
-        const Qt::DropAction result = drag->exec(Qt::MoveAction);
-
-        if (result != Qt::MoveAction) {
-            // No PCManFM-Qt window accepted the drop
-            // Detach the tab if more than one tab is present, otherwise cancel cleanly
+    } else {
+        // Another window may have accepted this drop
+        // MainWindow::dropEvent sets the tabDropped property when we drop into ourselves
+        const bool droppedIntoTabBar = property(tabDropped).toBool();
+        if (droppedIntoTabBar) {
+            setProperty(tabDropped, QVariant());
+        } else {
             if (tabCountBefore > 1) {
                 Q_EMIT tabDetached();
             } else {
                 finishMouseMoveEvent();
             }
-        } else {
-            // Another window may have accepted this drop
-            // MainWindow::dropEvent sets the tabDropped property when we drop into ourselves
-            const bool droppedIntoTabBar = property(tabDropped).toBool();
-            if (droppedIntoTabBar) {
-                setProperty(tabDropped, QVariant());
-            } else {
-                if (tabCountBefore > 1) {
-                    Q_EMIT tabDetached();
-                } else {
-                    finishMouseMoveEvent();
-                }
-            }
         }
+    }
 
-        event->accept();
-        if (drag) {
-            drag->deleteLater();
-        }
-    } else {
-        QTabBar::mouseMoveEvent(event);
+    event->accept();
+    if (drag) {
+        drag->deleteLater();
     }
 }
 
 void TabBar::finishMouseMoveEvent() {
     // Synthesize a neutral mouse move to reset internal drag state in QTabBar
     QMouseEvent finishingEvent(QEvent::MouseMove, QPoint(), QCursor::pos(), Qt::NoButton, Qt::NoButton, Qt::NoModifier);
-    mouseMoveEvent(&finishingEvent);
+    QTabBar::mouseMoveEvent(&finishingEvent);
 }
 
 void TabBar::releaseMouse() {
     // Synthesize a release event to clean up pressed state when we cancel a drag
     QMouseEvent releasingEvent(QEvent::MouseButtonRelease, QPoint(), QCursor::pos(), Qt::LeftButton, Qt::NoButton,
                                Qt::NoModifier);
-    mouseReleaseEvent(&releasingEvent);
+    QTabBar::mouseReleaseEvent(&releasingEvent);
 }
 
 void TabBar::mouseReleaseEvent(QMouseEvent* event) {
@@ -131,7 +143,7 @@ void TabBar::mouseReleaseEvent(QMouseEvent* event) {
 
 // Let the main window receive dragged tabs
 void TabBar::dragEnterEvent(QDragEnterEvent* event) {
-    if (detachable_ && event->mimeData()->hasFormat(QString::fromLatin1(tabMimeType))) {
+    if (detachable_ && event->mimeData()->hasFormat(kTabMimeType)) {
         // ignore here so the main window can handle the drop
         event->ignore();
     }
