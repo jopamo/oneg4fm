@@ -1,4 +1,7 @@
-/* pcmanfm/mainwindow_menus.cpp */
+/*
+ * Main window menu management implementation
+ * pcmanfm/mainwindow_menus.cpp
+ */
 
 #include <QActionGroup>
 #include <QFontMetrics>
@@ -10,15 +13,20 @@
 #include "mainwindow.h"
 #include "tabpage.h"
 
+// If you are migrating away from libfm, replace these with your new backend interfaces
+#include <libfm-qt6/core/mimetype.h>
+
 namespace PCManFM {
 
-void MainWindow::toggleMenuBar(bool /*checked*/) {
-    auto* app = qobject_cast<Application*>(qApp);
-    if (!app) {
-        return;
-    }
+namespace {
 
-    Settings& settings = app->settings();
+// Helper to access Application settings concisely
+Settings& appSettings() { return static_cast<Application*>(qApp)->settings(); }
+
+}  // namespace
+
+void MainWindow::toggleMenuBar(bool /*checked*/) {
+    Settings& settings = appSettings();
     const bool showMenuBar = !settings.showMenuBar();
 
     if (!showMenuBar) {
@@ -34,18 +42,17 @@ void MainWindow::toggleMenuBar(bool /*checked*/) {
 
     ui.menubar->setVisible(showMenuBar);
     ui.actionMenu_bar->setChecked(showMenuBar);
-    menuSep_->setVisible(!showMenuBar);
+
+    if (menuSep_) {
+        menuSep_->setVisible(!showMenuBar);
+    }
+
     ui.actionMenu->setVisible(!showMenuBar);
     settings.setShowMenuBar(showMenuBar);
 }
 
 void MainWindow::updateRecenMenu() {
-    auto* app = qobject_cast<Application*>(qApp);
-    if (!app) {
-        return;
-    }
-
-    Settings& settings = app->settings();
+    Settings& settings = appSettings();
     const int recentNumber = settings.getRecentFilesNumber();
     const auto actions = ui.menuRecentFiles->actions();
 
@@ -56,18 +63,22 @@ void MainWindow::updateRecenMenu() {
 
     const auto recentFiles = settings.getRecentFiles();
     const int recentSize = recentFiles.size();
+
     QFontMetrics metrics(ui.menuRecentFiles->font());
-    const int w = 150 * metrics.horizontalAdvance(QLatin1Char(' '));  // for eliding long texts
+    // Optimization: Calculate max width once
+    const int w = 150 * metrics.horizontalAdvance(QLatin1Char(' '));
 
     for (int i = 0; i < recentNumber; ++i) {
         if (i < recentSize) {
-            auto text = recentFiles.value(i)
-                            .replace(QLatin1Char('&'), QLatin1String("&&"))
-                            .replace(QLatin1Char('\t'), QLatin1Char(' '));
+            auto text = recentFiles.value(i);
+
+            // Format text for menu display (escape ampersands, convert tabs)
+            text.replace(QLatin1Char('&'), QStringLiteral("&&")).replace(QLatin1Char('\t'), QLatin1Char(' '));
 
             actions.at(i)->setText(metrics.elidedText(text, Qt::ElideMiddle, w));
 
             QIcon icon;
+            // LibFM Migration Note: Replace Fm::MimeType with standard QFileInfo/QMimeDatabase logic later
             auto mimeType = Fm::MimeType::guessFromFileName(recentFiles.at(i).toLocal8Bit().constData());
             if (!mimeType->isUnknownType()) {
                 if (auto icn = mimeType->icon()) {
@@ -90,12 +101,7 @@ void MainWindow::updateRecenMenu() {
 }
 
 void MainWindow::clearRecentMenu() {
-    auto* app = qobject_cast<Application*>(qApp);
-    if (!app) {
-        return;
-    }
-
-    Settings& settings = app->settings();
+    Settings& settings = appSettings();
     settings.clearRecentFiles();
     updateRecenMenu();
 }
@@ -106,23 +112,20 @@ void MainWindow::lanunchRecentFile() {
         return;
     }
 
-    auto* app = qobject_cast<Application*>(qApp);
-    if (!app) {
-        return;
-    }
-
-    Settings& settings = app->settings();
     const QString pathStr = action->data().toString();
     if (pathStr.isEmpty()) {
         return;
     }
 
+    Settings& settings = appSettings();
     settings.addRecentFile(pathStr);
 
     const QByteArray pathArray = pathStr.toLocal8Bit();
     auto path = Fm::FilePath::fromLocalPath(pathArray.constData());
+
     Fm::FilePathList pathList;
     pathList.push_back(std::move(path));
+
     fileLauncher_.launchPaths(nullptr, pathList);
 }
 
@@ -162,31 +165,28 @@ void MainWindow::updateViewMenuForCurrentPage() {
             case Fm::FolderView::IconMode:
                 modeAction = ui.actionIconView;
                 break;
-
             case Fm::FolderView::CompactMode:
                 modeAction = ui.actionCompactView;
                 break;
-
             case Fm::FolderView::DetailedListMode:
                 modeAction = ui.actionDetailedList;
                 break;
-
             case Fm::FolderView::ThumbnailMode:
                 modeAction = ui.actionThumbnailView;
                 break;
         }
 
-        Q_ASSERT(modeAction != nullptr);
-        modeAction->setChecked(true);
+        if (modeAction) {
+            modeAction->setChecked(true);
+        }
 
         // sort menu
         // WARNING: Since libfm-qt may have a column that is not handled here,
-        // we should prevent a crash by setting all actions to null first and
-        // check their action group later.
+        // we should prevent a crash by checking bounds carefully.
+
         QAction* sortActions[Fm::FolderModel::NumOfColumns];
-        for (int i = 0; i < Fm::FolderModel::NumOfColumns; ++i) {
-            sortActions[i] = nullptr;
-        }
+        std::fill(std::begin(sortActions), std::end(sortActions), nullptr);
+
         sortActions[Fm::FolderModel::ColumnFileName] = ui.actionByFileName;
         sortActions[Fm::FolderModel::ColumnFileMTime] = ui.actionByMTime;
         sortActions[Fm::FolderModel::ColumnFileCrTime] = ui.actionByCrTime;
@@ -196,11 +196,20 @@ void MainWindow::updateViewMenuForCurrentPage() {
         sortActions[Fm::FolderModel::ColumnFileOwner] = ui.actionByOwner;
         sortActions[Fm::FolderModel::ColumnFileGroup] = ui.actionByGroup;
 
+        // Ensure we handle action groups correctly
         if (auto* group = ui.actionByFileName->actionGroup()) {
             const auto groupActions = group->actions();
-            auto* action = sortActions[tabPage->sortColumn()];
-            if (groupActions.contains(action)) {
-                action->setChecked(true);
+
+            // Validate index before array access
+            const int sortCol = tabPage->sortColumn();
+            QAction* targetAction = nullptr;
+
+            if (sortCol >= 0 && sortCol < Fm::FolderModel::NumOfColumns) {
+                targetAction = sortActions[sortCol];
+            }
+
+            if (targetAction && groupActions.contains(targetAction)) {
+                targetAction->setChecked(true);
             } else {
                 for (auto* a : groupActions) {
                     a->setChecked(false);
@@ -231,9 +240,12 @@ void MainWindow::updateSelectedActions() {
     bool hasAccessible = false;
     bool hasDeletable = false;
     int renamable = 0;
+    size_t fileCount = 0;
 
     if (TabPage* page = currentPage()) {
         const auto files = page->selectedFiles();
+        fileCount = files.size();
+
         for (const auto& file : files) {
             if (file->isAccessible()) {
                 hasAccessible = true;
@@ -244,12 +256,13 @@ void MainWindow::updateSelectedActions() {
             if (file->canSetName()) {
                 ++renamable;
             }
+            // Optimization: break early if all flags are satisfied
             if (hasAccessible && hasDeletable && renamable > 1) {
                 break;
             }
         }
         ui.actionFileProperties->setEnabled(!files.empty());
-        ui.actionCopyFullPath->setEnabled(files.size() == 1);
+        ui.actionCopyFullPath->setEnabled(fileCount == 1);
     }
 
     ui.actionCopy->setEnabled(hasAccessible);
@@ -264,37 +277,54 @@ void MainWindow::updateUIForCurrentPage(bool setFocus) {
 
     if (tabPage) {
         setWindowTitle(tabPage->title());
+
+        // Update Location Bar
+        // NOTE: This logic supports both path bar and path entry modes
+        Fm::PathBar* pathBar = nullptr;
+        Fm::PathEdit* pathEdit = nullptr;
+
         if (splitView_) {
             if (activeViewFrame_) {
-                if (auto* pathBar = qobject_cast<Fm::PathBar*>(activeViewFrame_->getTopBar())) {
-                    pathBar->setPath(tabPage->path());
-                } else if (auto* pathEntry = qobject_cast<Fm::PathEdit*>(activeViewFrame_->getTopBar())) {
-                    pathEntry->setText(tabPage->pathName());
+                pathBar = qobject_cast<Fm::PathBar*>(activeViewFrame_->getTopBar());
+                if (!pathBar) {
+                    pathEdit = qobject_cast<Fm::PathEdit*>(activeViewFrame_->getTopBar());
                 }
             }
         } else {
-            if (pathEntry_) {
-                pathEntry_->setText(tabPage->pathName());
-            } else if (pathBar_) {
-                pathBar_->setPath(tabPage->path());
-            }
+            // In single view, use the member variables if available
+            pathBar = pathBar_;
+            pathEdit = pathEntry_;
+        }
+
+        if (pathBar) {
+            pathBar->setPath(tabPage->path());
+        } else if (pathEdit) {
+            pathEdit->setText(tabPage->pathName());
         }
 
         ui.statusbar->showMessage(tabPage->statusText());
+
         if (setFocus && tabPage->folderView() && tabPage->folderView()->childView()) {
             tabPage->folderView()->childView()->setFocus();
         }
 
         // update side pane
-        ui.sidePane->setCurrentPath(tabPage->path());
-        ui.sidePane->setShowHidden(tabPage->showHidden());
+        if (ui.sidePane) {
+            ui.sidePane->setCurrentPath(tabPage->path());
+            ui.sidePane->setShowHidden(tabPage->showHidden());
+        }
 
         // update back/forward/up toolbar buttons
         ui.actionGoUp->setEnabled(tabPage->canUp());
         ui.actionGoBack->setEnabled(tabPage->canBackward());
         ui.actionGoForward->setEnabled(tabPage->canForward());
 
-        ui.actionOpenAsAdmin->setEnabled(tabPage->path() && tabPage->path().isNative());
+        // Safety check for path validity
+        bool isNative = false;
+        if (auto path = tabPage->path()) {
+            isNative = path.isNative();
+        }
+        ui.actionOpenAsAdmin->setEnabled(isNative);
 
         updateViewMenuForCurrentPage();
         updateStatusBarForCurrentPage();
