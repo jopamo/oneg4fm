@@ -8,6 +8,11 @@
 #include "mainwindow.h"
 #include "tabpage.h"
 
+// New backend headers
+#include "../src/backends/qt/qt_fileinfo.h"
+#include "../src/core/backend_registry.h"
+#include "../src/ui/filepropertiesdialog.h"
+
 // LibFM-Qt Headers
 #include <libfm-qt6/fileoperation.h>
 #include <libfm-qt6/filepropsdialog.h>
@@ -17,6 +22,8 @@
 #include <QAbstractItemView>
 #include <QApplication>
 #include <QClipboard>
+#include <QFile>
+#include <QInputDialog>
 #include <QMessageBox>
 
 namespace PCManFM {
@@ -25,6 +32,55 @@ namespace {
 
 // Helper to access Application settings concisely
 Settings& appSettings() { return static_cast<Application*>(qApp)->settings(); }
+
+// Helper to convert Fm::FilePathList to QStringList
+QStringList filePathListToStringList(const Fm::FilePathList& paths) {
+    QStringList result;
+    for (const auto& path : paths) {
+        result.append(QString::fromUtf8(path.toString().get()));
+    }
+    return result;
+}
+
+// Temporary adapter to convert libfm file info to new backend IFileInfo
+std::shared_ptr<IFileInfo> convertToIFileInfo(const std::shared_ptr<const Fm::FileInfo>& fmInfo) {
+    // For now, create a simple QtFileInfo from the path
+    // TODO: Properly convert all metadata when QtFileInfo is fully integrated
+    return std::make_shared<QtFileInfo>(QString::fromUtf8(fmInfo->path().toString().get()));
+}
+
+// Rename file using new backend
+bool renameFileWithBackend(const std::shared_ptr<const Fm::FileInfo>& file, QWidget* parent) {
+    // For now, use a simple QInputDialog for renaming
+    // TODO: Implement proper rename dialog with validation
+    bool ok;
+
+    // Get current name from file path
+    QString currentPath = QString::fromUtf8(file->path().toString().get());
+    QFileInfo fileInfo(currentPath);
+    QString currentName = fileInfo.fileName();
+
+    QString newName =
+        QInputDialog::getText(parent, QApplication::translate("MainWindow", "Rename"),
+                              QApplication::translate("MainWindow", "New name:"), QLineEdit::Normal, currentName, &ok);
+
+    if (ok && !newName.isEmpty() && newName != currentName) {
+        QString newPath = fileInfo.absolutePath() + QLatin1String("/") + newName;
+
+        // Use QFile for the rename operation
+        QFile fileObj(currentPath);
+        if (fileObj.rename(newPath)) {
+            return true;
+        } else {
+            QMessageBox::critical(
+                parent, QApplication::translate("MainWindow", "Error"),
+                QApplication::translate("MainWindow", "Failed to rename file: %1").arg(fileObj.errorString()));
+            return false;
+        }
+    }
+
+    return ok;
+}
 
 }  // namespace
 
@@ -36,7 +92,15 @@ void MainWindow::on_actionFileProperties_triggered() {
 
     auto files = page->selectedFiles();
     if (!files.empty()) {
-        Fm::FilePropsDialog::showForFiles(files);
+        // Convert libfm file info to new backend IFileInfo
+        QList<std::shared_ptr<IFileInfo>> fileInfos;
+        for (const auto& file : files) {
+            fileInfos.append(convertToIFileInfo(file));
+        }
+
+        auto dialog = new FilePropertiesDialog(fileInfos, this);
+        dialog->setAttribute(Qt::WA_DeleteOnClose);
+        dialog->show();
     }
 }
 
@@ -53,7 +117,10 @@ void MainWindow::on_actionFolderProperties_triggered() {
 
     auto info = folder->info();
     if (info) {
-        Fm::FilePropsDialog::showForFile(info);
+        auto fileInfo = convertToIFileInfo(info);
+        auto dialog = new FilePropertiesDialog(fileInfo, this);
+        dialog->setAttribute(Qt::WA_DeleteOnClose);
+        dialog->show();
     }
 }
 
@@ -109,9 +176,30 @@ void MainWindow::on_actionDelete_triggered() {
     const bool shiftPressed = (qApp->keyboardModifiers() & Qt::ShiftModifier);
 
     if (settings.useTrash() && !shiftPressed && !trashed) {
-        Fm::FileOperation::trashFiles(paths, settings.confirmTrash(), this);
+        // Use new trash backend
+        auto trashBackend = BackendRegistry::trash();
+        QStringList pathStrings = filePathListToStringList(paths);
+
+        for (const QString& path : pathStrings) {
+            QString error;
+            if (!trashBackend->moveToTrash(path, &error)) {
+                QMessageBox::warning(this, tr("Move to Trash Failed"),
+                                     tr("Failed to move '%1' to trash: %2").arg(path, error));
+                return;
+            }
+        }
     } else {
-        Fm::FileOperation::deleteFiles(paths, settings.confirmDelete(), this);
+        // Use new file operations backend for permanent deletion
+        auto fileOps = BackendRegistry::createFileOps();
+        FileOpRequest req;
+        req.type = FileOpType::Delete;
+        req.sources = filePathListToStringList(paths);
+        req.destination = QString();  // Not used for delete
+        req.followSymlinks = false;
+        req.overwriteExisting = false;
+
+        // TODO: Add progress dialog and error handling
+        fileOps->start(req);
     }
 }
 
@@ -149,7 +237,7 @@ void MainWindow::on_actionRename_triggered() {
     // NOTE: For true bulk rename, use on_actionBulkRename_triggered
     if (!files.empty()) {
         for (auto& file : files) {
-            if (!Fm::renameFile(file, this)) {
+            if (!renameFileWithBackend(file, this)) {
                 break;
             }
         }

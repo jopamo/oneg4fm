@@ -23,6 +23,15 @@ set(pcmanfm_SRCS
     connectserverdialog.cpp
     settings.cpp
     bulkrename.cpp
+    # New backend files
+    ../src/core/ifileops.cpp
+    ../src/core/backend_registry.cpp
+    ../src/backends/qt/qt_fileops.cpp
+    ../src/backends/qt/qt_fileinfo.cpp
+    ../src/backends/qt/qt_foldermodel.cpp
+    ../src/backends/gio/gio_trashbackend.cpp
+    ../src/ui/filepropertiesdialog.cpp
+    ../src/core/ifoldermodel.h
 )
 
 qt6_add_dbus_adaptor(pcmanfm_DBUS_SRCS
@@ -89,12 +98,14 @@ target_include_directories(pcmanfm-qt
     PRIVATE
         "${Qt6Gui_PRIVATE_INCLUDE_DIRS}"
         "${CMAKE_CURRENT_BINARY_DIR}/pcmanfm-qt_autogen/include"
+        ${GIO_INCLUDE_DIRS}
 )
 
 target_link_libraries(pcmanfm-qt
     Qt6::Widgets
     Qt6::DBus
     fm-qt6
+    ${GIO_LIBRARIES}
 )
 
 install(TARGETS pcmanfm-qt RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})

@@ -5,6 +5,7 @@
 
 #include <libfm-qt6/libfmqt.h>
 
+#include "../src/core/backend_registry.h"
 #include "application.h"
 
 int main(int argc, char** argv) {
@@ -13,6 +14,9 @@ int main(int argc, char** argv) {
     qunsetenv("QT_NO_GLIB");
 
     PCManFM::Application app(argc, argv);
+
+    // Initialize backend registry after QApplication is created
+    PCManFM::BackendRegistry::initDefaults();
 
     app.init();
     return app.exec();
