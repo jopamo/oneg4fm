@@ -1,18 +1,33 @@
+/*
+ * File launcher implementation for PCManFM-Qt
+ * pcmanfm/launcher.cpp
+ */
+
 #include "launcher.h"
 
+// LibFM-Qt Headers
 #include <libfm-qt6/core/filepath.h>
 
+// Qt Headers
+#include <QApplication>
 #include <QFileInfo>
 
+// Local Headers
 #include "application.h"
 #include "mainwindow.h"
 
 namespace PCManFM {
 
+namespace {
+
+// Helper to access Application settings concisely
+Settings& appSettings() { return static_cast<Application*>(qApp)->settings(); }
+
+}  // namespace
+
 Launcher::Launcher(PCManFM::MainWindow* mainWindow)
     : Fm::FileLauncher(), mainWindow_(mainWindow), openInNewTab_(false), openWithDefaultFileManager_(false) {
-    auto* app = static_cast<Application*>(qApp);
-    setQuickExec(app->settings().quickExec());
+    setQuickExec(appSettings().quickExec());
 }
 
 Launcher::~Launcher() = default;
@@ -23,21 +38,26 @@ bool Launcher::openFolder(GAppLaunchContext* ctx, const Fm::FileInfoList& folder
         return false;
     }
 
-    auto* app = static_cast<Application*>(qApp);
+    Settings& settings = appSettings();
     MainWindow* mainWindow = mainWindow_;
 
-    auto firstInfo = folderInfos.front();
-    Fm::FilePath path = firstInfo->path();
+    auto it = folderInfos.cbegin();
+    const auto end = folderInfos.cend();
+
+    // Handle the first folder specifically (it might create the window)
+    Fm::FilePath firstPath = (*it)->path();
 
     if (!mainWindow) {
-        // If there is no PCManFM-Qt main window, we may delegate to the system default file manager
+        // If there is no PCManFM-Qt main window, we may delegate to the system default file manager.
         // This is done when:
-        //   1) openWithDefaultFileManager_ is set
+        //   1) openWithDefaultFileManager_ is set (e.g. desktop launch)
         //   2) we are not explicitly opening in new tabs
         //   3) the default file manager exists and is not pcmanfm-qt itself
         if (openWithDefaultFileManager_ && !openInNewTab_) {
             auto defaultApp = Fm::GAppInfoPtr{g_app_info_get_default_for_type("inode/directory", FALSE), false};
-            if (defaultApp != nullptr && strcmp(g_app_info_get_id(defaultApp.get()), "pcmanfm-qt.desktop") != 0) {
+
+            // Check if default app exists and is NOT this application
+            if (defaultApp && std::strcmp(g_app_info_get_id(defaultApp.get()), "pcmanfm-qt.desktop") != 0) {
                 for (const auto& folder : folderInfos) {
                     Fm::FileLauncher::launchWithDefaultApp(folder, ctx);
                 }
@@ -45,55 +65,55 @@ bool Launcher::openFolder(GAppLaunchContext* ctx, const Fm::FileInfoList& folder
             }
         }
 
-        // fall back to opening a new PCManFM-Qt main window
-        mainWindow = new MainWindow(std::move(path));
-        mainWindow->resize(app->settings().windowWidth(), app->settings().windowHeight());
+        // Fall back to opening a new PCManFM-Qt main window
+        mainWindow = new MainWindow(std::move(firstPath));
+        mainWindow->resize(settings.windowWidth(), settings.windowHeight());
 
-        if (app->settings().windowMaximized()) {
+        if (settings.windowMaximized()) {
             mainWindow->setWindowState(mainWindow->windowState() | Qt::WindowMaximized);
         }
     } else {
-        // we already have a main window, either reuse the current tab or open a new one
+        // We already have a main window, either reuse the current tab or open a new one
         if (openInNewTab_) {
-            mainWindow->addTab(std::move(path));
+            mainWindow->addTab(std::move(firstPath));
         } else {
-            mainWindow->chdir(std::move(path));
+            mainWindow->chdir(std::move(firstPath));
         }
     }
 
-    // remaining folders always open in new tabs in the same window
-    for (size_t i = 1; i < folderInfos.size(); ++i) {
-        auto& fi = folderInfos[i];
-        Fm::FilePath extraPath = fi->path();
-        mainWindow->addTab(std::move(extraPath));
+    // Process remaining folders (always open in new tabs in the same window)
+    ++it;  // Move past the first one we just handled
+    for (; it != end; ++it) {
+        mainWindow->addTab((*it)->path());
     }
 
     mainWindow->show();
     mainWindow->raise();
     mainWindow->activateWindow();
 
-    // reset the tab flag for subsequent launches
+    // Reset the tab flag for subsequent launches
     openInNewTab_ = false;
 
     return true;
 }
 
 void Launcher::launchedFiles(const Fm::FileInfoList& files) const {
-    auto* app = static_cast<Application*>(qApp);
-    if (app->settings().getRecentFilesNumber() <= 0) {
+    Settings& settings = appSettings();
+    if (settings.getRecentFilesNumber() <= 0) {
         return;
     }
 
     for (const auto& file : files) {
+        // Only add native files that are NOT directories to recent history
         if (file->isNative() && !file->isDir()) {
-            app->settings().addRecentFile(QString::fromUtf8(file->path().localPath().get()));
+            settings.addRecentFile(QString::fromUtf8(file->path().localPath().get()));
         }
     }
 }
 
 void Launcher::launchedPaths(const Fm::FilePathList& paths) const {
-    auto* app = static_cast<Application*>(qApp);
-    if (app->settings().getRecentFilesNumber() <= 0) {
+    Settings& settings = appSettings();
+    if (settings.getRecentFilesNumber() <= 0) {
         return;
     }
 
@@ -103,9 +123,11 @@ void Launcher::launchedPaths(const Fm::FilePathList& paths) const {
         }
 
         const QString pathStr = QString::fromUtf8(path.localPath().get());
-        // QFileInfo check is cheap here because the path is native
+
+        // QFileInfo check is required here because FilePath doesn't know if it's a dir
+        // without querying the filesystem
         if (!QFileInfo(pathStr).isDir()) {
-            app->settings().addRecentFile(pathStr);
+            settings.addRecentFile(pathStr);
         }
     }
 }
