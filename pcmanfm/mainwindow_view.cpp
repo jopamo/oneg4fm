@@ -1,175 +1,253 @@
-/* pcmanfm/mainwindow_view.cpp */
+/*
+ * Main window view management implementation
+ * pcmanfm/mainwindow_view.cpp
+ */
 
 #include "application.h"
 #include "mainwindow.h"
 #include "tabpage.h"
 
+// Qt Headers
+#include <QApplication>
+#include <QSplitter>
+#include <QStackedWidget>
+
 namespace PCManFM {
 
+namespace {
+
+// Helper to access Application settings concisely
+Settings& appSettings() { return static_cast<Application*>(qApp)->settings(); }
+
+}  // namespace
+
+//-----------------------------------------------------------------------------
+// Traversal Helpers
+//-----------------------------------------------------------------------------
+
+// Helper to iterate over every TabPage in the CURRENT window only
+template <typename Func>
+void MainWindow::forEachTabPageLocal(Func func) {
+    if (!ui.viewSplitter) return;
+
+    for (int i = 0; i < ui.viewSplitter->count(); ++i) {
+        if (auto* viewFrame = qobject_cast<ViewFrame*>(ui.viewSplitter->widget(i))) {
+            auto* stack = viewFrame->getStackedWidget();
+            for (int j = 0; j < stack->count(); ++j) {
+                if (auto* page = qobject_cast<TabPage*>(stack->widget(j))) {
+                    func(page);
+                }
+            }
+        }
+    }
+}
+
+// Helper to iterate over every TabPage in ALL open MainWindow instances
+// This is necessary for Global settings (like "Show Thumbnails") that should update everywhere immediately.
+template <typename Func>
+void MainWindow::forEachTabPageGlobal(Func func) {
+    const auto windows = qApp->topLevelWidgets();
+    for (auto* widget : windows) {
+        if (auto* mw = qobject_cast<MainWindow*>(widget)) {
+            // Process tabs in this window
+            if (mw->ui.viewSplitter) {
+                for (int i = 0; i < mw->ui.viewSplitter->count(); ++i) {
+                    if (auto* viewFrame = qobject_cast<ViewFrame*>(mw->ui.viewSplitter->widget(i))) {
+                        auto* stack = viewFrame->getStackedWidget();
+                        for (int j = 0; j < stack->count(); ++j) {
+                            if (auto* page = qobject_cast<TabPage*>(stack->widget(j))) {
+                                func(mw, page);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+//-----------------------------------------------------------------------------
+// View Mode Actions
+//-----------------------------------------------------------------------------
+
 void MainWindow::on_actionIconView_triggered() {
-    TabPage* page = currentPage();
-    page->setViewMode(Fm::FolderView::IconMode);
-    setTabIcon(page);
+    if (auto* page = currentPage()) {
+        page->setViewMode(Fm::FolderView::IconMode);
+        setTabIcon(page);
+    }
 }
 
 void MainWindow::on_actionCompactView_triggered() {
-    TabPage* page = currentPage();
-    page->setViewMode(Fm::FolderView::CompactMode);
-    setTabIcon(page);
+    if (auto* page = currentPage()) {
+        page->setViewMode(Fm::FolderView::CompactMode);
+        setTabIcon(page);
+    }
 }
 
 void MainWindow::on_actionDetailedList_triggered() {
-    TabPage* page = currentPage();
-    page->setViewMode(Fm::FolderView::DetailedListMode);
-    setTabIcon(page);
+    if (auto* page = currentPage()) {
+        page->setViewMode(Fm::FolderView::DetailedListMode);
+        setTabIcon(page);
+    }
 }
 
 void MainWindow::on_actionThumbnailView_triggered() {
-    TabPage* page = currentPage();
-    page->setViewMode(Fm::FolderView::ThumbnailMode);
-    setTabIcon(page);
+    if (auto* page = currentPage()) {
+        page->setViewMode(Fm::FolderView::ThumbnailMode);
+        setTabIcon(page);
+    }
 }
 
+//-----------------------------------------------------------------------------
+// Visibility & Filter Actions
+//-----------------------------------------------------------------------------
+
 void MainWindow::on_actionShowHidden_triggered(bool checked) {
-    currentPage()->setShowHidden(checked);
-    // visibility of hidden folders in directory tree is toggled by onTabPageSortFilterChanged()
+    if (auto* page = currentPage()) {
+        page->setShowHidden(checked);
+        // visibility of hidden folders in directory tree is toggled by onTabPageSortFilterChanged()
+    }
 }
 
 void MainWindow::on_actionShowThumbnails_triggered(bool checked) {
-    QWidgetList windows = qApp->topLevelWidgets();
-    QWidgetList::iterator it;
-    for (it = windows.begin(); it != windows.end(); ++it) {
-        QWidget* window = *it;
-        if (window->inherits("PCManFM::MainWindow")) {
-            MainWindow* mainWindow = static_cast<MainWindow*>(window);
-            mainWindow->ui.actionShowThumbnails->setChecked(checked);  // doesn't call this function
-            for (int i = 0; i < mainWindow->ui.viewSplitter->count(); ++i) {
-                if (ViewFrame* viewFrame = qobject_cast<ViewFrame*>(mainWindow->ui.viewSplitter->widget(i))) {
-                    int n = viewFrame->getStackedWidget()->count();
-                    for (int j = 0; j < n; ++j) {
-                        if (TabPage* page = static_cast<TabPage*>(viewFrame->getStackedWidget()->widget(j))) {
-                            page->setShowThumbnails(checked);
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-
-void MainWindow::on_actionByFileName_triggered(bool /*checked*/) {
-    currentPage()->sort(Fm::FolderModel::ColumnFileName, currentPage()->sortOrder());
-}
-
-void MainWindow::on_actionByMTime_triggered(bool /*checked*/) {
-    currentPage()->sort(Fm::FolderModel::ColumnFileMTime, currentPage()->sortOrder());
-}
-
-void MainWindow::on_actionByCrTime_triggered(bool /*checked*/) {
-    currentPage()->sort(Fm::FolderModel::ColumnFileCrTime, currentPage()->sortOrder());
-}
-
-void MainWindow::on_actionByDTime_triggered(bool /*checked*/) {
-    currentPage()->sort(Fm::FolderModel::ColumnFileDTime, currentPage()->sortOrder());
-}
-
-void MainWindow::on_actionByOwner_triggered(bool /*checked*/) {
-    currentPage()->sort(Fm::FolderModel::ColumnFileOwner, currentPage()->sortOrder());
-}
-
-void MainWindow::on_actionByGroup_triggered(bool /*checked*/) {
-    currentPage()->sort(Fm::FolderModel::ColumnFileGroup, currentPage()->sortOrder());
-}
-
-void MainWindow::on_actionByFileSize_triggered(bool /*checked*/) {
-    currentPage()->sort(Fm::FolderModel::ColumnFileSize, currentPage()->sortOrder());
-}
-
-void MainWindow::on_actionByFileType_triggered(bool /*checked*/) {
-    currentPage()->sort(Fm::FolderModel::ColumnFileType, currentPage()->sortOrder());
-}
-
-void MainWindow::on_actionAscending_triggered(bool /*checked*/) {
-    currentPage()->sort(currentPage()->sortColumn(), Qt::AscendingOrder);
-}
-
-void MainWindow::on_actionDescending_triggered(bool /*checked*/) {
-    currentPage()->sort(currentPage()->sortColumn(), Qt::DescendingOrder);
-}
-
-void MainWindow::on_actionCaseSensitive_triggered(bool checked) { currentPage()->setSortCaseSensitive(checked); }
-
-void MainWindow::on_actionFolderFirst_triggered(bool checked) { currentPage()->setSortFolderFirst(checked); }
-
-void MainWindow::on_actionHiddenLast_triggered(bool checked) { currentPage()->setSortHiddenLast(checked); }
-
-void MainWindow::on_actionPreserveView_triggered(bool checked) {
-    TabPage* page = currentPage();
-    page->setCustomizedView(checked);
-    if (checked) {
-        ui.actionPreserveViewRecursive->setChecked(false);
-    }
-    ui.actionGoToCustomizedViewSource->setVisible(page->hasInheritedCustomizedView());
-    setTabIcon(page);
-}
-
-void MainWindow::on_actionPreserveViewRecursive_triggered(bool checked) {
-    TabPage* page = currentPage();
-    page->setCustomizedView(checked, true);
-    if (checked) {
-        ui.actionPreserveView->setChecked(false);
-    }
-    ui.actionGoToCustomizedViewSource->setVisible(page->hasInheritedCustomizedView());
-    setTabIcon(page);
-}
-
-void MainWindow::on_actionGoToCustomizedViewSource_triggered() {
-    currentPage()->goToCustomizedViewSource();
-    updateUIForCurrentPage();
+    // This is a global setting, so update all pages in all windows
+    forEachTabPageGlobal([checked](MainWindow* mw, TabPage* page) {
+        // Update the menu action state in other windows so they stay in sync
+        mw->ui.actionShowThumbnails->setChecked(checked);
+        page->setShowThumbnails(checked);
+    });
 }
 
 void MainWindow::on_actionFilter_triggered(bool checked) {
-    static_cast<Application*>(qApp)->settings().setShowFilter(checked);
-    // show/hide filter-bars and disable/enable their transience for all tabs
-    // (of all view frames) in all windows because this is a global setting
-    QWidgetList windows = qApp->topLevelWidgets();
-    QWidgetList::iterator it;
-    for (it = windows.begin(); it != windows.end(); ++it) {
-        QWidget* window = *it;
-        if (window->inherits("PCManFM::MainWindow")) {
-            MainWindow* mainWindow = static_cast<MainWindow*>(window);
-            mainWindow->ui.actionFilter->setChecked(checked);  // doesn't call this function
-            for (int i = 0; i < mainWindow->ui.viewSplitter->count(); ++i) {
-                if (ViewFrame* viewFrame = qobject_cast<ViewFrame*>(mainWindow->ui.viewSplitter->widget(i))) {
-                    int n = viewFrame->getStackedWidget()->count();
-                    for (int j = 0; j < n; ++j) {
-                        if (TabPage* page = static_cast<TabPage*>(viewFrame->getStackedWidget()->widget(j))) {
-                            page->transientFilterBar(!checked);
-                        }
-                    }
-                }
-            }
-        }
-    }
+    appSettings().setShowFilter(checked);
+
+    // Show/hide filter-bars and disable/enable their transience for all tabs
+    // in all windows because this is a global setting.
+    forEachTabPageGlobal([checked](MainWindow* mw, TabPage* page) {
+        mw->ui.actionFilter->setChecked(checked);
+        page->transientFilterBar(!checked);
+    });
 }
 
 void MainWindow::on_actionUnfilter_triggered() {
-    // clear filters for all tabs (of all view frames)
-    for (int i = 0; i < ui.viewSplitter->count(); ++i) {
-        if (ViewFrame* viewFrame = qobject_cast<ViewFrame*>(ui.viewSplitter->widget(i))) {
-            int n = viewFrame->getStackedWidget()->count();
-            for (int j = 0; j < n; ++j) {
-                if (TabPage* page = static_cast<TabPage*>(viewFrame->getStackedWidget()->widget(j))) {
-                    page->clearFilter();
-                }
-            }
-        }
-    }
+    // Clear filters for all tabs in the CURRENT window only
+    forEachTabPageLocal([](TabPage* page) { page->clearFilter(); });
 }
 
 void MainWindow::on_actionShowFilter_triggered() {
-    if (TabPage* page = currentPage()) {
+    if (auto* page = currentPage()) {
         page->showFilterBar();
+    }
+}
+
+void MainWindow::on_actionPreserveView_triggered(bool checked) {
+    if (auto* page = currentPage()) {
+        page->setCustomizedView(checked);
+        if (checked) {
+            ui.actionPreserveViewRecursive->setChecked(false);
+        }
+        ui.actionGoToCustomizedViewSource->setVisible(page->hasInheritedCustomizedView());
+        setTabIcon(page);
+    }
+}
+
+void MainWindow::on_actionPreserveViewRecursive_triggered(bool checked) {
+    if (auto* page = currentPage()) {
+        page->setCustomizedView(checked, true);
+        if (checked) {
+            ui.actionPreserveView->setChecked(false);
+        }
+        ui.actionGoToCustomizedViewSource->setVisible(page->hasInheritedCustomizedView());
+        setTabIcon(page);
+    }
+}
+
+void MainWindow::on_actionGoToCustomizedViewSource_triggered() {
+    if (auto* page = currentPage()) {
+        page->goToCustomizedViewSource();
+        updateUIForCurrentPage();
+    }
+}
+
+//-----------------------------------------------------------------------------
+// Sorting Actions
+//-----------------------------------------------------------------------------
+
+void MainWindow::on_actionByFileName_triggered(bool /*checked*/) {
+    if (auto* page = currentPage()) {
+        page->sort(Fm::FolderModel::ColumnFileName, page->sortOrder());
+    }
+}
+
+void MainWindow::on_actionByMTime_triggered(bool /*checked*/) {
+    if (auto* page = currentPage()) {
+        page->sort(Fm::FolderModel::ColumnFileMTime, page->sortOrder());
+    }
+}
+
+void MainWindow::on_actionByCrTime_triggered(bool /*checked*/) {
+    if (auto* page = currentPage()) {
+        page->sort(Fm::FolderModel::ColumnFileCrTime, page->sortOrder());
+    }
+}
+
+void MainWindow::on_actionByDTime_triggered(bool /*checked*/) {
+    if (auto* page = currentPage()) {
+        page->sort(Fm::FolderModel::ColumnFileDTime, page->sortOrder());
+    }
+}
+
+void MainWindow::on_actionByOwner_triggered(bool /*checked*/) {
+    if (auto* page = currentPage()) {
+        page->sort(Fm::FolderModel::ColumnFileOwner, page->sortOrder());
+    }
+}
+
+void MainWindow::on_actionByGroup_triggered(bool /*checked*/) {
+    if (auto* page = currentPage()) {
+        page->sort(Fm::FolderModel::ColumnFileGroup, page->sortOrder());
+    }
+}
+
+void MainWindow::on_actionByFileSize_triggered(bool /*checked*/) {
+    if (auto* page = currentPage()) {
+        page->sort(Fm::FolderModel::ColumnFileSize, page->sortOrder());
+    }
+}
+
+void MainWindow::on_actionByFileType_triggered(bool /*checked*/) {
+    if (auto* page = currentPage()) {
+        page->sort(Fm::FolderModel::ColumnFileType, page->sortOrder());
+    }
+}
+
+void MainWindow::on_actionAscending_triggered(bool /*checked*/) {
+    if (auto* page = currentPage()) {
+        page->sort(page->sortColumn(), Qt::AscendingOrder);
+    }
+}
+
+void MainWindow::on_actionDescending_triggered(bool /*checked*/) {
+    if (auto* page = currentPage()) {
+        page->sort(page->sortColumn(), Qt::DescendingOrder);
+    }
+}
+
+void MainWindow::on_actionCaseSensitive_triggered(bool checked) {
+    if (auto* page = currentPage()) {
+        page->setSortCaseSensitive(checked);
+    }
+}
+
+void MainWindow::on_actionFolderFirst_triggered(bool checked) {
+    if (auto* page = currentPage()) {
+        page->setSortFolderFirst(checked);
+    }
+}
+
+void MainWindow::on_actionHiddenLast_triggered(bool checked) {
+    if (auto* page = currentPage()) {
+        page->setSortHiddenLast(checked);
     }
 }
 
