@@ -1,11 +1,22 @@
+/*
+ * Custom folder view implementation for PCManFM-Qt
+ * pcmanfm/view.cpp
+ */
+
 #include "view.h"
 
-#include <libfm-qt6/filemenu.h>
-#include <libfm-qt6/foldermenu.h>
-
+// Qt Headers
 #include <QAction>
+#include <QApplication>
+#include <QIcon>
 #include <QMessageBox>
 
+// LibFM-Qt Headers
+#include <libfm-qt6/filemenu.h>
+#include <libfm-qt6/foldermenu.h>
+#include <libfm-qt6/proxyfoldermodel.h>  // Ensure this is included for ProxyFolderModel usage
+
+// Local Headers
 #include "application.h"
 #include "launcher.h"
 #include "mainwindow.h"
@@ -13,9 +24,15 @@
 
 namespace PCManFM {
 
+namespace {
+
+// Helper to access Application settings concisely
+Settings& appSettings() { return static_cast<Application*>(qApp)->settings(); }
+
+}  // namespace
+
 View::View(Fm::FolderView::ViewMode mode, QWidget* parent) : Fm::FolderView(mode, parent) {
-    auto& settings = static_cast<Application*>(qApp)->settings();
-    updateFromSettings(settings);
+    updateFromSettings(appSettings());
 }
 
 View::~View() = default;
@@ -42,11 +59,13 @@ void View::onFileClicked(int type, const std::shared_ptr<const Fm::FileInfo>& fi
             return;
         }
 
+        // Prompt user if trying to open too many files at once
         if (files.size() > 20) {
             auto reply = QMessageBox::question(
                 window(), tr("Many files"),
                 tr("Do you want to open these %1 files?", nullptr, files.size()).arg(files.size()),
                 QMessageBox::Yes | QMessageBox::No, QMessageBox::No);
+
             if (reply == QMessageBox::No) {
                 return;
             }
@@ -56,23 +75,27 @@ void View::onFileClicked(int type, const std::shared_ptr<const Fm::FileInfo>& fi
         return;
     }
 
+    // Delegate other click types to base class
     Fm::FolderView::onFileClicked(type, fileInfo);
 }
 
 void View::onNewWindow() {
-    auto* menu = static_cast<Fm::FileMenu*>(sender()->parent());
+    auto* menu = qobject_cast<Fm::FileMenu*>(sender()->parent());
+    if (!menu) return;
+
     auto files = menu->files();
 
     if (files.size() == 1 && !files.front()->isDir()) {
         openFolderAndSelectFile(files.front());
     } else {
-        auto* app = static_cast<Application*>(qApp);
-        app->openFolders(std::move(files));
+        static_cast<Application*>(qApp)->openFolders(std::move(files));
     }
 }
 
 void View::onNewTab() {
-    auto* menu = static_cast<Fm::FileMenu*>(sender()->parent());
+    auto* menu = qobject_cast<Fm::FileMenu*>(sender()->parent());
+    if (!menu) return;
+
     auto files = menu->files();
 
     if (files.size() == 1 && !files.front()->isDir()) {
@@ -84,9 +107,10 @@ void View::onNewTab() {
 
 void View::onOpenInTerminal() {
     auto* app = static_cast<Application*>(qApp);
-    auto* menu = static_cast<Fm::FileMenu*>(sender()->parent());
-    auto files = menu->files();
+    auto* menu = qobject_cast<Fm::FileMenu*>(sender()->parent());
+    if (!menu) return;
 
+    auto files = menu->files();
     for (auto& file : files) {
         app->openFolderInTerminal(file->path());
     }
@@ -97,10 +121,10 @@ void View::onSearch() {
 }
 
 void View::prepareFileMenu(Fm::FileMenu* menu) {
-    auto* app = static_cast<Application*>(qApp);
-    menu->setConfirmDelete(app->settings().confirmDelete());
-    menu->setConfirmTrash(app->settings().confirmTrash());
-    menu->setUseTrash(app->settings().useTrash());
+    Settings& settings = appSettings();
+    menu->setConfirmDelete(settings.confirmDelete());
+    menu->setConfirmTrash(settings.confirmTrash());
+    menu->setUseTrash(settings.useTrash());
 
     bool allNative = true;
     bool allDirectory = true;
@@ -138,6 +162,7 @@ void View::prepareFileMenu(Fm::FileMenu* menu) {
             menu->createAction()->setVisible(false);
         }
 
+        // Special handling for search results
         if (folder() && folder()->path().hasUriScheme("search") && files.size() == 1 && !files.front()->isDir()) {
             auto* action = new QAction(QIcon::fromTheme(QStringLiteral("tab-new")), tr("Show in New T&ab"), menu);
             connect(action, &QAction::triggered, this, &View::onNewTab);
@@ -155,10 +180,11 @@ void View::prepareFolderMenu(Fm::FolderMenu* menu) {
     if (folder && folder->isNative()) {
         auto* action =
             new QAction(QIcon::fromTheme(QStringLiteral("utilities-terminal")), tr("Open in Termina&l"), menu);
-        connect(action, &QAction::triggered, this, [folder] {
-            auto* app = static_cast<Application*>(qApp);
-            app->openFolderInTerminal(folder->path());
-        });
+
+        // Capture by value is safe here as long as MainWindow outlives the menu action logic
+        connect(action, &QAction::triggered, this,
+                [folder] { static_cast<Application*>(qApp)->openFolderInTerminal(folder->path()); });
+
         menu->insertAction(menu->createAction(), action);
         menu->insertSeparator(menu->createAction());
     }
@@ -176,8 +202,9 @@ void View::updateFromSettings(Settings& settings) {
     setCtrlRightClick(settings.ctrlRightClick());
     setScrollPerPixel(settings.scrollPerPixel());
 
-    auto* proxyModel = model();
-    if (proxyModel) {
+    // Cast the model to ProxyFolderModel to access extended settings
+    // Using dynamic_cast for safety, though we expect ProxyFolderModel here based on TabPage setup
+    if (auto* proxyModel = dynamic_cast<Fm::ProxyFolderModel*>(model())) {
         proxyModel->setShowThumbnails(settings.showThumbnails());
         proxyModel->setBackupAsHidden(settings.backupAsHidden());
     }
@@ -188,29 +215,31 @@ void View::launchFiles(Fm::FileInfoList files, bool inNewTabs) {
         return;
     }
 
-    if (auto launcher = dynamic_cast<Launcher*>(fileLauncher())) {
-        // this path is used for the desktop and similar cases
+    if (auto* launcher = dynamic_cast<Launcher*>(fileLauncher())) {
+        // this path is used for the desktop and similar cases where there might not be a MainWindow
         if (!launcher->hasMainWindow()) {
             if (!inNewTabs && launcher->openWithDefaultFileManager()) {
                 launcher->launchFiles(nullptr, std::move(files));
                 return;
             }
 
-            auto& settings = static_cast<Application*>(qApp)->settings();
+            Settings& settings = appSettings();
             if (inNewTabs || settings.singleWindowMode()) {
                 MainWindow* window = MainWindow::lastActive();
 
                 if (!window) {
                     const QWidgetList windows = qApp->topLevelWidgets();
-                    for (int i = windows.size() - 1; i >= 0; --i) {
-                        auto* win = windows.at(i);
-                        if (win->inherits("PCManFM::MainWindow")) {
-                            window = static_cast<MainWindow*>(win);
+                    // Iterate backwards to find the most recently active main window
+                    for (auto it = windows.rbegin(); it != windows.rend(); ++it) {
+                        if ((*it)->inherits("PCManFM::MainWindow")) {
+                            window = static_cast<MainWindow*>(*it);
                             break;
                         }
                     }
                 }
 
+                // If a window is found, launch in new tabs there.
+                // Otherwise this will effectively open a new window if Launcher handles nullptr parent gracefully.
                 Launcher tempLauncher(window);
                 tempLauncher.openInNewTab();
                 tempLauncher.launchFiles(nullptr, std::move(files));
