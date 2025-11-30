@@ -1,3 +1,8 @@
+/*
+ * Status bar implementation for PCManFM-Qt
+ * pcmanfm/statusbar.cpp
+ */
+
 #include "statusbar.h"
 
 #include <QPainter>
