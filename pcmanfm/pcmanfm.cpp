@@ -1,5 +1,11 @@
-#include "application.h"
+/*
+ * PCManFM-Qt main entry point
+ * pcmanfm/pcmanfm.cpp
+ */
+
 #include <libfm-qt6/libfmqt.h>
+
+#include "application.h"
 
 int main(int argc, char** argv) {
     // ensure that glib integration of Qt is not turned off
