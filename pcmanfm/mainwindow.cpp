@@ -10,262 +10,258 @@ namespace PCManFM {
 QPointer<MainWindow> MainWindow::lastActive_;
 
 MainWindow::MainWindow(Fm::FilePath path)
-    : pathEntry_(nullptr), pathBar_(nullptr), fsInfoLabel_(nullptr),
-      fileLauncher_(this), rightClickIndex_(-1), updatingViewMenu_(false),
-      menuSep_(nullptr), menuSpacer_(nullptr), activeViewFrame_(nullptr),
-      splitView_(false), splitTabsNum_(0) {
-  // Setup UI from the generated header
-  ui.setupUi(this);
+    : pathEntry_(nullptr),
+      pathBar_(nullptr),
+      fsInfoLabel_(nullptr),
+      fileLauncher_(this),
+      rightClickIndex_(-1),
+      updatingViewMenu_(false),
+      menuSep_(nullptr),
+      menuSpacer_(nullptr),
+      activeViewFrame_(nullptr),
+      splitView_(false),
+      splitTabsNum_(0),
+      deleteShortcut_(nullptr) {
+    // Setup UI from the generated header
+    ui.setupUi(this);
 
-  // Create filesystem info label and add to status bar
-  fsInfoLabel_ = new QLabel(this);
-  fsInfoLabel_->setFrameShape(QFrame::NoFrame);
-  fsInfoLabel_->setContentsMargins(4, 0, 4, 0);
-  fsInfoLabel_->setVisible(false);
-  ui.statusbar->addPermanentWidget(fsInfoLabel_);
+    // Create filesystem info label and add to status bar
+    fsInfoLabel_ = new QLabel(this);
+    fsInfoLabel_->setFrameShape(QFrame::NoFrame);
+    fsInfoLabel_->setContentsMargins(4, 0, 4, 0);
+    fsInfoLabel_->setVisible(false);
+    ui.statusbar->addPermanentWidget(fsInfoLabel_);
 
-  // Initialize the window
-  auto *app = qobject_cast<Application *>(qApp);
-  if (app) {
-    Settings &settings = app->settings();
+    // Initialize the window
+    auto* app = qobject_cast<Application*>(qApp);
+    if (app) {
+        Settings& settings = app->settings();
 
-    // Initialize side pane
-    ui.sidePane->setVisible(settings.isSidePaneVisible());
-    ui.actionSidePane->setChecked(settings.isSidePaneVisible());
-    ui.sidePane->setIconSize(
-        QSize(settings.sidePaneIconSize(), settings.sidePaneIconSize()));
-    ui.sidePane->setMode(settings.sidePaneMode());
-    ui.sidePane->restoreHiddenPlaces(settings.getHiddenPlaces());
+        // Initialize side pane
+        ui.sidePane->setVisible(settings.isSidePaneVisible());
+        ui.actionSidePane->setChecked(settings.isSidePaneVisible());
+        ui.sidePane->setIconSize(QSize(settings.sidePaneIconSize(), settings.sidePaneIconSize()));
+        ui.sidePane->setMode(settings.sidePaneMode());
+        ui.sidePane->restoreHiddenPlaces(settings.getHiddenPlaces());
 
-    // Connect side pane signals
-    connect(ui.sidePane, &Fm::SidePane::chdirRequested, this,
-            &MainWindow::onSidePaneChdirRequested);
-    connect(ui.sidePane, &Fm::SidePane::openFolderInNewWindowRequested, this,
-            &MainWindow::onSidePaneOpenFolderInNewWindowRequested);
-    connect(ui.sidePane, &Fm::SidePane::openFolderInNewTabRequested, this,
-            &MainWindow::onSidePaneOpenFolderInNewTabRequested);
-    connect(ui.sidePane, &Fm::SidePane::openFolderInTerminalRequested, this,
-            &MainWindow::onSidePaneOpenFolderInTerminalRequested);
-    connect(ui.sidePane, &Fm::SidePane::createNewFolderRequested, this,
-            &MainWindow::onSidePaneCreateNewFolderRequested);
-    connect(ui.sidePane, &Fm::SidePane::modeChanged, this,
-            &MainWindow::onSidePaneModeChanged);
-    connect(ui.sidePane, &Fm::SidePane::hiddenPlaceSet, this,
-            &MainWindow::onSettingHiddenPlace);
+        // Connect side pane signals
+        connect(ui.sidePane, &Fm::SidePane::chdirRequested, this, &MainWindow::onSidePaneChdirRequested);
+        connect(ui.sidePane, &Fm::SidePane::openFolderInNewWindowRequested, this,
+                &MainWindow::onSidePaneOpenFolderInNewWindowRequested);
+        connect(ui.sidePane, &Fm::SidePane::openFolderInNewTabRequested, this,
+                &MainWindow::onSidePaneOpenFolderInNewTabRequested);
+        connect(ui.sidePane, &Fm::SidePane::openFolderInTerminalRequested, this,
+                &MainWindow::onSidePaneOpenFolderInTerminalRequested);
+        connect(ui.sidePane, &Fm::SidePane::createNewFolderRequested, this,
+                &MainWindow::onSidePaneCreateNewFolderRequested);
+        connect(ui.sidePane, &Fm::SidePane::modeChanged, this, &MainWindow::onSidePaneModeChanged);
+        connect(ui.sidePane, &Fm::SidePane::hiddenPlaceSet, this, &MainWindow::onSettingHiddenPlace);
 
-    // Initialize splitter
-    connect(ui.splitter, &QSplitter::splitterMoved, this,
-            &MainWindow::onSplitterMoved);
-    ui.splitter->setStretchFactor(1, 1); // only the right pane can be stretched
-    ui.splitter->setSizes({settings.splitterPos(), 1});
+        // Initialize splitter
+        connect(ui.splitter, &QSplitter::splitterMoved, this, &MainWindow::onSplitterMoved);
+        ui.splitter->setStretchFactor(1, 1);  // only the right pane can be stretched
+        ui.splitter->setSizes({settings.splitterPos(), 1});
 
-    // Initialize view action icons
-    ui.actionIconView->setIcon(QIcon::fromTheme(
-        QLatin1String("view-list-icons"),
-        style()->standardIcon(QStyle::SP_FileDialogContentsView)));
-    ui.actionThumbnailView->setIcon(QIcon::fromTheme(
-        QLatin1String("view-list-icons"),
-        style()->standardIcon(QStyle::SP_FileDialogContentsView)));
-    ui.actionCompactView->setIcon(QIcon::fromTheme(
-        QLatin1String("view-list-details"),
-        style()->standardIcon(QStyle::SP_FileDialogDetailedView)));
-    ui.actionDetailedList->setIcon(QIcon::fromTheme(
-        QLatin1String("view-list-details"),
-        style()->standardIcon(QStyle::SP_FileDialogDetailedView)));
+        // Initialize view action icons
+        ui.actionIconView->setIcon(QIcon::fromTheme(QLatin1String("view-list-icons"),
+                                                    style()->standardIcon(QStyle::SP_FileDialogContentsView)));
+        ui.actionThumbnailView->setIcon(QIcon::fromTheme(QLatin1String("view-list-icons"),
+                                                         style()->standardIcon(QStyle::SP_FileDialogContentsView)));
+        ui.actionCompactView->setIcon(QIcon::fromTheme(QLatin1String("view-list-details"),
+                                                       style()->standardIcon(QStyle::SP_FileDialogDetailedView)));
+        ui.actionDetailedList->setIcon(QIcon::fromTheme(QLatin1String("view-list-details"),
+                                                        style()->standardIcon(QStyle::SP_FileDialogDetailedView)));
 
-    updateFromSettings(settings);
-  }
+        updateFromSettings(settings);
+    }
 
-  // Add initial view frame
-  addViewFrame(path);
+    // Add initial view frame
+    addViewFrame(path);
 
-  // Set window title
-  setWindowTitle(QStringLiteral("PCManFM-Qt"));
+    // Set window title
+    setWindowTitle(QStringLiteral("PCManFM-Qt"));
+
+    // Create manual shortcut for Delete key to work around Qt action shortcut issues
+    deleteShortcut_ = new QShortcut(QKeySequence(Qt::Key_Delete), this);
+    connect(deleteShortcut_, &QShortcut::activated, this, &MainWindow::on_actionDelete_triggered);
 }
 
 MainWindow::~MainWindow() {
-  // Destructor implementation
+    // Destructor implementation
 }
 
-void MainWindow::updateFromSettings(Settings &settings) {
-  // Apply settings to the window
-  splitView_ = settings.splitView();
+void MainWindow::updateFromSettings(Settings& settings) {
+    // Apply settings to the window
+    splitView_ = settings.splitView();
 
-  // Update side pane visibility
-  if (ui.sidePane) {
-    ui.sidePane->setVisible(settings.isSidePaneVisible());
-  }
+    // Update side pane visibility
+    if (ui.sidePane) {
+        ui.sidePane->setVisible(settings.isSidePaneVisible());
+    }
 
-  // Update side pane mode
-  if (ui.sidePane) {
-    ui.sidePane->setMode(settings.sidePaneMode());
-  }
+    // Update side pane mode
+    if (ui.sidePane) {
+        ui.sidePane->setMode(settings.sidePaneMode());
+    }
 
-  // Update splitter position
-  if (ui.splitter) {
-    ui.splitter->setSizes({settings.splitterPos(), 1});
-  }
+    // Update splitter position
+    if (ui.splitter) {
+        ui.splitter->setSizes({settings.splitterPos(), 1});
+    }
 
-  // Update menu bar visibility
-  ui.menubar->setVisible(settings.showMenuBar());
+    // Update menu bar visibility
+    ui.menubar->setVisible(settings.showMenuBar());
 
-  // Toolbar visibility is not configurable - always visible
+    // Toolbar visibility is not configurable - always visible
 }
 
 void MainWindow::setRTLIcons(bool isRTL) {
-  // RTL icons implementation
+    // RTL icons implementation
 }
 
 void MainWindow::onTabPageTitleChanged() {
-  // Tab page title changed implementation
+    // Tab page title changed implementation
 }
 
 void MainWindow::onTabPageStatusChanged(int type, QString statusText) {
-  if (type == TabPage::StatusTextFSInfo) {
-    // Update filesystem info label
-    if (fsInfoLabel_) {
-      fsInfoLabel_->setText(statusText);
-      fsInfoLabel_->setVisible(!statusText.isEmpty());
+    if (type == TabPage::StatusTextFSInfo) {
+        // Update filesystem info label
+        if (fsInfoLabel_) {
+            fsInfoLabel_->setText(statusText);
+            fsInfoLabel_->setVisible(!statusText.isEmpty());
+        }
     }
-  }
 }
 
 void MainWindow::onTabPageSortFilterChanged() {
-  // Tab page sort filter changed implementation
+    // Tab page sort filter changed implementation
 }
 
 void MainWindow::onFolderUnmounted() {
-  // Folder unmounted implementation
+    // Folder unmounted implementation
 }
 
 void MainWindow::onTabBarClicked(int index) {
-  // Tab bar clicked implementation
+    // Tab bar clicked implementation
 }
 
-void MainWindow::tabContextMenu(const QPoint &pos) {
-  // Tab context menu implementation
+void MainWindow::tabContextMenu(const QPoint& pos) {
+    // Tab context menu implementation
 }
 
 void MainWindow::on_actionNewTab_triggered() {
-  // New tab action implementation
+    // New tab action implementation
 }
 
 void MainWindow::on_actionSplitView_triggered(bool check) {
-  // Split view action implementation
+    // Split view action implementation
 }
 
 void MainWindow::on_actionPreferences_triggered() {
-  // Preferences action implementation
+    // Preferences action implementation
 }
 
 void MainWindow::on_actionEditBookmarks_triggered() {
-  // Edit bookmarks action implementation
+    // Edit bookmarks action implementation
 }
 
 void MainWindow::on_actionAbout_triggered() {
-  // About action implementation
+    // About action implementation
 }
 
 void MainWindow::on_actionHiddenShortcuts_triggered() {
-  // Hidden shortcuts action implementation
+    // Hidden shortcuts action implementation
 }
 
 void MainWindow::onShortcutPrevTab() {
-  // Previous tab shortcut implementation
+    // Previous tab shortcut implementation
 }
 
 void MainWindow::onShortcutNextTab() {
-  // Next tab shortcut implementation
+    // Next tab shortcut implementation
 }
 
 void MainWindow::onShortcutJumpToTab() {
-  // Jump to tab shortcut implementation
+    // Jump to tab shortcut implementation
 }
 
-void MainWindow::onSidePaneChdirRequested(int type, const Fm::FilePath &path) {
-  // FIXME: use enum for type value or change it to button.
-  if (type == 0) { // left button (default)
+void MainWindow::onSidePaneChdirRequested(int type, const Fm::FilePath& path) {
+    // FIXME: use enum for type value or change it to button.
+    if (type == 0) {  // left button (default)
+        chdir(path);
+    } else if (type == 1) {  // middle button
+        addTab(path);
+    } else if (type == 2) {  // new window
+        (new MainWindow(path))->show();
+    }
+}
+
+void MainWindow::onSidePaneOpenFolderInNewWindowRequested(const Fm::FilePath& path) { (new MainWindow(path))->show(); }
+
+void MainWindow::onSidePaneOpenFolderInNewTabRequested(const Fm::FilePath& path) { addTab(path); }
+
+void MainWindow::onSidePaneOpenFolderInTerminalRequested(const Fm::FilePath& path) {
+    Application* app = static_cast<Application*>(qApp);
+    app->openFolderInTerminal(path);
+}
+
+void MainWindow::onSidePaneCreateNewFolderRequested(const Fm::FilePath& path) {
+    // For now, navigate to the path and trigger new folder action
+    // This is a temporary implementation until proper file creation is available
     chdir(path);
-  } else if (type == 1) { // middle button
-    addTab(path);
-  } else if (type == 2) { // new window
-    (new MainWindow(path))->show();
-  }
-}
-
-void MainWindow::onSidePaneOpenFolderInNewWindowRequested(
-    const Fm::FilePath &path) {
-  (new MainWindow(path))->show();
-}
-
-void MainWindow::onSidePaneOpenFolderInNewTabRequested(
-    const Fm::FilePath &path) {
-  addTab(path);
-}
-
-void MainWindow::onSidePaneOpenFolderInTerminalRequested(
-    const Fm::FilePath &path) {
-  Application *app = static_cast<Application *>(qApp);
-  app->openFolderInTerminal(path);
-}
-
-void MainWindow::onSidePaneCreateNewFolderRequested(const Fm::FilePath &path) {
-  // For now, navigate to the path and trigger new folder action
-  // This is a temporary implementation until proper file creation is available
-  chdir(path);
-  // TODO: Implement proper folder creation at the specified path
+    // TODO: Implement proper folder creation at the specified path
 }
 
 void MainWindow::onSidePaneModeChanged(Fm::SidePane::Mode mode) {
-  static_cast<Application *>(qApp)->settings().setSidePaneMode(mode);
+    static_cast<Application*>(qApp)->settings().setSidePaneMode(mode);
 }
 
 void MainWindow::on_actionSidePane_triggered(bool check) {
-  // Side pane action implementation
+    // Side pane action implementation
 }
 
 void MainWindow::onSplitterMoved(int pos, int index) {
-  // Splitter moved implementation
+    // Splitter moved implementation
 }
 
 void MainWindow::onBackForwardContextMenu(QPoint pos) {
-  // Back/forward context menu implementation
+    // Back/forward context menu implementation
 }
 
 void MainWindow::closeLeftTabs() {
-  // Close left tabs implementation
+    // Close left tabs implementation
 }
 
 void MainWindow::closeRightTabs() {
-  // Close right tabs implementation
+    // Close right tabs implementation
 }
 
-void MainWindow::onSettingHiddenPlace(const QString &str, bool hide) {
-  static_cast<Application *>(qApp)->settings().setHiddenPlace(str, hide);
+void MainWindow::onSettingHiddenPlace(const QString& str, bool hide) {
+    static_cast<Application*>(qApp)->settings().setHiddenPlace(str, hide);
 }
 
 void MainWindow::on_actionCreateLauncher_triggered() {
-  // Create launcher action implementation
+    // Create launcher action implementation
 }
 
 void MainWindow::on_actionNewBlankFile_triggered() {
-  // New blank file action implementation
+    // New blank file action implementation
 }
 
 void MainWindow::on_actionNewWin_triggered() {
-  // New window action implementation
+    // New window action implementation
 }
 
 void MainWindow::on_actionCloseWindow_triggered() {
-  // Close window action implementation
+    // Close window action implementation
 }
 
 void MainWindow::on_actionNewFolder_triggered() {
-  // New folder action implementation
+    // New folder action implementation
 }
 
 void MainWindow::on_actionCloseTab_triggered() {
-  // Close tab action implementation
+    // Close tab action implementation
 }
 
-} // namespace PCManFM
+}  // namespace PCManFM
