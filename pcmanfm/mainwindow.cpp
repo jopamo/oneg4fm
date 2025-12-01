@@ -61,6 +61,12 @@ MainWindow::MainWindow(Fm::FilePath path)
     // Initialize Back/Forward buttons context menu policy
     ui.actionGoBack->setMenuRole(QAction::NoRole);
 
+    // Ensure Delete shortcut works even when nested views have focus
+    ui.actionDelete->setShortcutContext(Qt::WidgetWithChildrenShortcut);
+    auto* deleteShortcut = new QShortcut(QKeySequence::Delete, this);
+    deleteShortcut->setContext(Qt::WidgetWithChildrenShortcut);
+    connect(deleteShortcut, &QShortcut::activated, this, &MainWindow::on_actionDelete_triggered);
+
     fsInfoLabel_ = new QLabel(this);
     fsInfoLabel_->setFrameShape(QFrame::NoFrame);
     fsInfoLabel_->setContentsMargins(4, 0, 4, 0);
