@@ -35,6 +35,9 @@ set(pcmanfm_SRCS
     ../src/ui/filepropertiesdialog.cpp
     ../src/ui/archivejob.cpp
     ../src/ui/archiveextractjob.cpp
+    ../src/ui/hexdocument.cpp
+    ../src/ui/hexeditorview.cpp
+    ../src/ui/hexeditorwindow.cpp
     ../src/ui/fsqt.cpp
     ../src/core/ifoldermodel.h
 )

@@ -45,6 +45,7 @@
 #include "../src/core/fs_ops.h"
 #include "../src/ui/archivejob.h"
 #include "../src/ui/archiveextractjob.h"
+#include "../src/ui/hexeditorwindow.h"
 
 namespace PCManFM {
 
@@ -172,6 +173,45 @@ void View::onOpenInTerminal() {
     for (auto& file : files) {
         app->openFolderInTerminal(file->path());
     }
+}
+
+void View::onOpenInHexEditor() {
+    auto* menu = qobject_cast<Fm::FileMenu*>(sender()->parent());
+    if (!menu) {
+        return;
+    }
+
+    const auto files = menu->files();
+    if (files.size() != 1 || !files.front()) {
+        QMessageBox::warning(window(), tr("Hex editor"), tr("Select a single file to open in the hex editor."));
+        return;
+    }
+    const auto& file = files.front();
+    if (file->isDir()) {
+        QMessageBox::warning(window(), tr("Hex editor"), tr("Hex editing is only available for files."));
+        return;
+    }
+    if (!file->isNative()) {
+        QMessageBox::warning(window(), tr("Hex editor"), tr("Only local files can be edited in hex."));
+        return;
+    }
+    const auto localPath = file->path().localPath();
+    if (!localPath) {
+        QMessageBox::warning(window(), tr("Hex editor"), tr("Unable to resolve local path for selection."));
+        return;
+    }
+
+    auto* editor = new HexEditorWindow();
+    editor->setAttribute(Qt::WA_DeleteOnClose);
+    QString error;
+    if (!editor->openFile(QString::fromUtf8(localPath.get()), error)) {
+        QMessageBox::warning(window(), tr("Hex editor"),
+                             error.isEmpty() ? tr("Failed to open file in hex editor.") : error);
+        editor->deleteLater();
+        return;
+    }
+    editor->resize(900, 600);
+    editor->show();
 }
 
 void View::onCalculateBlake3() {
@@ -488,6 +528,11 @@ void View::prepareFileMenu(Fm::FileMenu* menu) {
             auto* action = new QAction(QIcon::fromTheme(QStringLiteral("accessories-calculator")),
                                        tr("Calculate BLAKE3 Checksum"), menu);
             connect(action, &QAction::triggered, this, &View::onCalculateBlake3);
+            menu->insertAction(menu->separator3(), action);
+
+            action = new QAction(QIcon::fromTheme(QStringLiteral("accessories-text-editor")), tr("Open in Hex Editor"),
+                                 menu);
+            connect(action, &QAction::triggered, this, &View::onOpenInHexEditor);
             menu->insertAction(menu->separator3(), action);
         }
 
