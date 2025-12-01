@@ -13,10 +13,6 @@
 
 namespace PCManFM {
 
-class ITrashBackend;
-class IVolumeBackend;
-class IRemoteBackend;
-
 class BackendRegistry {
    public:
     static void initDefaults();

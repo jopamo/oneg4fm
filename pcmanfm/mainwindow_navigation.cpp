@@ -14,15 +14,6 @@
 
 namespace PCManFM {
 
-namespace {
-
-// Helper to access Application settings concisely
-Settings& appSettings() {
-    return static_cast<Application*>(qApp)->settings();
-}
-
-}  // namespace
-
 void MainWindow::chdir(Fm::FilePath path, ViewFrame* viewFrame) {
     if (!viewFrame) {
         return;

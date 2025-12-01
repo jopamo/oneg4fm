@@ -193,12 +193,7 @@ void MainWindow::on_actionDelete_triggered() {
         return;
     }
 
-    const bool trashed =
-        std::any_of(paths.cbegin(), paths.cend(), [](const auto& path) { return path.hasUriScheme("trash"); });
-
-    const bool shiftPressed = (qApp->keyboardModifiers() & Qt::ShiftModifier);
-
-    const bool useTrash = settings.useTrash() && !shiftPressed && !trashed;
+    const bool useTrash = false;
     const int itemCount = static_cast<int>(paths.size());
 
     // Respect confirmation preferences for trash or delete
@@ -217,44 +212,25 @@ void MainWindow::on_actionDelete_triggered() {
         }
     }
 
-    if (useTrash) {
-        auto trashBackend = BackendRegistry::trash();
-        if (!trashBackend) {
-            QMessageBox::warning(this, tr("Move to Trash Failed"), tr("Trash backend is not available."));
-            return;
-        }
-
-        const QStringList pathStrings = filePathListToStringList(paths);
-        for (const QString& path : pathStrings) {
-            QString error;
-            if (!trashBackend->moveToTrash(path, &error)) {
-                QMessageBox::warning(this, tr("Move to Trash Failed"),
-                                     tr("Failed to move '%1' to trash: %2").arg(path, error));
-                return;
-            }
-        }
+    auto fileOps = BackendRegistry::createFileOps();
+    if (!fileOps) {
+        QMessageBox::warning(this, tr("Delete Failed"), tr("File operations backend is not available."));
+        return;
     }
-    else {
-        auto fileOps = BackendRegistry::createFileOps();
-        if (!fileOps) {
-            QMessageBox::warning(this, tr("Delete Failed"), tr("File operations backend is not available."));
-            return;
-        }
 
-        // Keep the async backend alive until it finishes.
-        IFileOps* fileOpsPtr = fileOps.release();
-        fileOpsPtr->setParent(this);
-        connect(fileOpsPtr, &IFileOps::finished, fileOpsPtr, &QObject::deleteLater);
+    // Keep the async backend alive until it finishes.
+    IFileOps* fileOpsPtr = fileOps.release();
+    fileOpsPtr->setParent(this);
+    connect(fileOpsPtr, &IFileOps::finished, fileOpsPtr, &QObject::deleteLater);
 
-        FileOpRequest req;
-        req.type = FileOpType::Delete;
-        req.sources = filePathListToStringList(paths);
-        req.destination.clear();
-        req.followSymlinks = false;
-        req.overwriteExisting = false;
+    FileOpRequest req;
+    req.type = FileOpType::Delete;
+    req.sources = filePathListToStringList(paths);
+    req.destination.clear();
+    req.followSymlinks = false;
+    req.overwriteExisting = false;
 
-        fileOpsPtr->start(req);
-    }
+    fileOpsPtr->start(req);
 }
 
 void MainWindow::on_actionRename_triggered() {
