@@ -79,7 +79,7 @@ bool BinaryDocument::readSpan(quint64 offset, quint64 length, QByteArray& out, Q
         out.clear();
         return false;
     }
-    if (bytesRead < out.size()) {
+    if (static_cast<qsizetype>(bytesRead) < out.size()) {
         out.resize(static_cast<int>(bytesRead));
     }
     return true;

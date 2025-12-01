@@ -10,6 +10,7 @@
 
 #include <vector>
 
+#include "color_roles.h"
 #include "binarydocument.h"
 #include "disasm_engine.h"
 
@@ -34,6 +35,7 @@ class DisasmModel : public QAbstractTableModel {
    private:
     DisasmEngine engine_;
     std::vector<DisasmInstr> instructions_;
+    quint64 baseAddress_ = 0;
 };
 
 }  // namespace PCManFM

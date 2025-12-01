@@ -5,7 +5,39 @@
 
 #include "disasm_engine.h"
 
+#include <algorithm>
+#include <cctype>
+#include <cstring>
+
 namespace PCManFM {
+
+namespace {
+DisasmInstr::Kind classifyMnemonic(const cs_insn& insn) {
+    std::string m(insn.mnemonic);
+    if (m.empty()) {
+        return DisasmInstr::Kind::Normal;
+    }
+    std::transform(m.begin(), m.end(), m.begin(), [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+
+    auto startsWith = [&m](const char* prefix) {
+        return m.size() >= std::strlen(prefix) && m.compare(0, std::strlen(prefix), prefix) == 0;
+    };
+
+    if (startsWith("ret")) {
+        return DisasmInstr::Kind::ReturnIns;
+    }
+    if (startsWith("call") || m == "bl" || m == "blr" || m == "jal" || m == "jalr") {
+        return DisasmInstr::Kind::Call;
+    }
+    if (startsWith("jmp") || (startsWith("j") && m != "jmp") || startsWith("b") || startsWith("br")) {
+        return DisasmInstr::Kind::Branch;
+    }
+    if (startsWith("nop")) {
+        return DisasmInstr::Kind::Nop;
+    }
+    return DisasmInstr::Kind::Normal;
+}
+}  // namespace
 
 DisasmEngine::~DisasmEngine() {
     if (handle_) {
@@ -107,9 +139,10 @@ bool DisasmEngine::disassemble(const std::uint8_t* code,
     for (size_t i = 0; i < count; ++i) {
         DisasmInstr di;
         di.address = insn[i].address;
-        di.mnemonic = insn[i].mnemonic ? insn[i].mnemonic : "";
-        di.opStr = insn[i].op_str ? insn[i].op_str : "";
+        di.mnemonic = insn[i].mnemonic;
+        di.opStr = insn[i].op_str;
         di.bytes.assign(insn[i].bytes, insn[i].bytes + insn[i].size);
+        di.kind = classifyMnemonic(insn[i]);
         out.push_back(std::move(di));
     }
 

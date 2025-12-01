@@ -15,10 +15,9 @@
 #include <string>
 
 #include "disasm_engine.h"
+#include "../core/windowed_file_reader.h"
 
 namespace PCManFM {
-
-class WindowedFileReader;
 
 class BinaryDocument {
    public:

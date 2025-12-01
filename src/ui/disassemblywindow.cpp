@@ -18,6 +18,8 @@
 #include <QVBoxLayout>
 
 #include "binarydocument.h"
+#include "color_delegate.h"
+#include "color_manager.h"
 #include "disasmmodel.h"
 
 #include <algorithm>
@@ -84,6 +86,15 @@ void DisassemblyWindow::setupUi() {
         QString error;
         if (!openFile(currentPath_, error) && !error.isEmpty()) {
             QMessageBox::warning(this, tr("Disassembly"), error);
+        }
+    });
+
+    colors_ = std::make_unique<ColorManager>(this);
+    delegate_ = new ColorDelegate(colors_.get(), view_);
+    view_->setItemDelegate(delegate_);
+    connect(colors_.get(), &ColorManager::schemeChanged, view_, [this] {
+        if (view_) {
+            view_->viewport()->update();
         }
     });
 }

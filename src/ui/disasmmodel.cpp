@@ -9,6 +9,8 @@
 #include <QString>
 #include <QVariant>
 
+#include "color_roles.h"
+
 namespace PCManFM {
 
 namespace {
@@ -60,6 +62,40 @@ QVariant DisasmModel::data(const QModelIndex& index, int role) const {
                 break;
         }
     }
+    else if (role == RoleCategory) {
+        switch (index.column()) {
+            case Address:
+                return static_cast<int>(CellCategory::InstructionAddress);
+            case Bytes:
+                return static_cast<int>(CellCategory::InstructionBytes);
+            case Mnemonic: {
+                switch (ins.kind) {
+                    case DisasmInstr::Kind::Branch:
+                        return static_cast<int>(CellCategory::Branch);
+                    case DisasmInstr::Kind::Call:
+                        return static_cast<int>(CellCategory::Call);
+                    case DisasmInstr::Kind::ReturnIns:
+                        return static_cast<int>(CellCategory::ReturnIns);
+                    case DisasmInstr::Kind::Nop:
+                        return static_cast<int>(CellCategory::Nop);
+                    case DisasmInstr::Kind::Normal:
+                        return static_cast<int>(CellCategory::InstructionMnemonic);
+                }
+                break;
+            }
+            case Operands:
+                return static_cast<int>(CellCategory::InstructionOperands);
+            default:
+                break;
+        }
+        return static_cast<int>(CellCategory::Normal);
+    }
+    else if (role == RoleAddress) {
+        return static_cast<qulonglong>(ins.address);
+    }
+    else if (role == RolePatched || role == RoleBookmark || role == RoleSearchHit) {
+        return false;
+    }
     return {};
 }
 
@@ -102,6 +138,7 @@ bool DisasmModel::disassemble(const BinaryDocument& doc, quint64 offset, quint64
     }
 
     beginResetModel();
+    baseAddress_ = doc.baseAddress();
     instructions_ = std::move(out);
     endResetModel();
     return true;

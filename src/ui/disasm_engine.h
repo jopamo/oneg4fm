@@ -21,6 +21,8 @@ struct DisasmInstr {
     std::string mnemonic;
     std::string opStr;
     std::vector<std::uint8_t> bytes;
+    // lightweight classification based on mnemonic/opcodes
+    enum class Kind { Normal, Branch, Call, ReturnIns, Nop } kind = Kind::Normal;
 };
 
 class DisasmEngine {

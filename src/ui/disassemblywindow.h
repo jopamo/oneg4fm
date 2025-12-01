@@ -18,6 +18,8 @@ class QTableView;
 namespace PCManFM {
 
 class BinaryDocument;
+class ColorManager;
+class ColorDelegate;
 class DisasmModel;
 
 class DisassemblyWindow : public QMainWindow {
@@ -36,6 +38,8 @@ class DisassemblyWindow : public QMainWindow {
 
     std::unique_ptr<BinaryDocument> doc_;
     std::unique_ptr<DisasmModel> model_;
+    std::unique_ptr<ColorManager> colors_;
+    ColorDelegate* delegate_ = nullptr;
     QTableView* view_ = nullptr;
     QLabel* pathLabel_ = nullptr;
     QString currentPath_;

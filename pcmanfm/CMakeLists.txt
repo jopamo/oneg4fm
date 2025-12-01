@@ -41,6 +41,8 @@ set(pcmanfm_SRCS
     ../src/ui/hexeditorview.cpp
     ../src/ui/hexeditorwindow.cpp
     ../src/ui/binarydocument.cpp
+    ../src/ui/color_manager.cpp
+    ../src/ui/color_delegate.cpp
     ../src/ui/disasm_engine.cpp
     ../src/ui/disasmmodel.cpp
     ../src/ui/disassemblywindow.cpp
