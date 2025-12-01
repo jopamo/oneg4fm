@@ -50,7 +50,7 @@ inline static Fm::FolderModel::ColumnId sortColumnFromString(const QString str);
 
 Settings::Settings()
     : QObject(),
-      supportTrash_(Fm::uriExists("trash:///")),  // check if trash:/// is supported
+      supportTrash_(false),  // trash disabled in this build
       fallbackIconThemeName_(),
       useFallbackIconTheme_(QIcon::themeName().isEmpty() || QIcon::themeName() == QLatin1String("hicolor")),
       singleWindowMode_(false),
@@ -199,7 +199,7 @@ bool Settings::loadFile(QString filePath) {
     singleWindowMode_ = settings.value(QStringLiteral("SingleWindowMode"), false).toBool();
     bookmarkOpenMethod_ = bookmarkOpenMethodFromString(settings.value(QStringLiteral("BookmarkOpenMethod")).toString());
     // settings for use with libfm
-    useTrash_ = settings.value(QStringLiteral("UseTrash"), true).toBool();
+    useTrash_ = false;  // trash disabled
     singleClick_ = settings.value(QStringLiteral("SingleClick"), false).toBool();
     autoSelectionDelay_ = settings.value(QStringLiteral("AutoSelectionDelay"), 600).toInt();
     ctrlRightClick_ = settings.value(QStringLiteral("CtrlRightClick"), false).toBool();
@@ -255,8 +255,8 @@ bool Settings::loadFile(QString filePath) {
     settings.beginGroup(QStringLiteral("Places"));
     QStringList hiddenPlacesList = settings.value(QStringLiteral("HiddenPlaces")).toStringList();
     hiddenPlaces_ = QSet<QString>(hiddenPlacesList.begin(), hiddenPlacesList.end());
-    // Force-hide legacy virtual locations that are no longer supported
-    hiddenPlaces_ << QStringLiteral("computer:///") << QStringLiteral("network:///");
+    // Force-hide unsupported/disabled virtual locations
+    hiddenPlaces_ << QStringLiteral("computer:///") << QStringLiteral("network:///") << QStringLiteral("trash:///");
     settings.endGroup();
 
     settings.beginGroup(QStringLiteral("Window"));
