@@ -198,7 +198,26 @@ void MainWindow::on_actionDelete_triggered() {
 
     const bool shiftPressed = (qApp->keyboardModifiers() & Qt::ShiftModifier);
 
-    if (settings.useTrash() && !shiftPressed && !trashed) {
+    const bool useTrash = settings.useTrash() && !shiftPressed && !trashed;
+    const int itemCount = static_cast<int>(paths.size());
+
+    // Respect confirmation preferences for trash or delete
+    const bool needsConfirm = useTrash ? settings.confirmTrash() : settings.confirmDelete();
+    if (needsConfirm) {
+        const QString countText =
+            (itemCount == 1) ? QString::fromUtf8(paths.front().toString().get()) : tr("%n items", nullptr, itemCount);
+        const QString title = useTrash ? tr("Move to Trash") : tr("Delete Files");
+        const QString question = useTrash ? tr("Move %1 to trash?").arg(countText)
+                                          : tr("Permanently delete %1? This cannot be undone.").arg(countText);
+
+        const auto reply =
+            QMessageBox::warning(this, title, question, QMessageBox::Yes | QMessageBox::No, QMessageBox::No);
+        if (reply != QMessageBox::Yes) {
+            return;
+        }
+    }
+
+    if (useTrash) {
         auto trashBackend = BackendRegistry::trash();
         if (!trashBackend) {
             QMessageBox::warning(this, tr("Move to Trash Failed"), tr("Trash backend is not available."));
