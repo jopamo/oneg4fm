@@ -106,6 +106,11 @@ bool DisassemblyWindow::openFile(const QString& path, QString& errorOut) {
         doc_.reset();
         return false;
     }
+    if (doc_->arch() == CpuArch::Unknown || doc_->size() == 0) {
+        errorOut = tr("Disassembly is only available for supported executable binaries.");
+        doc_.reset();
+        return false;
+    }
 
     if (!model_) {
         model_ = std::make_unique<DisasmModel>(this);

@@ -47,6 +47,7 @@
 #include "../src/ui/archiveextractjob.h"
 #include "../src/ui/hexeditorwindow.h"
 #include "../src/ui/disassemblywindow.h"
+#include "../src/ui/binarydocument.h"
 
 namespace PCManFM {
 
@@ -102,6 +103,15 @@ bool isSupportedArchive(const QString& path, QString* destinationOut) {
         *destinationOut = info.absolutePath() + QLatin1Char('/') + stem;
     }
     return true;
+}
+
+bool isDisassemblySupported(const QString& path) {
+    PCManFM::BinaryDocument doc;
+    QString error;
+    if (!doc.open(path, error)) {
+        return false;
+    }
+    return doc.arch() != PCManFM::CpuArch::Unknown && doc.size() > 0;
 }
 
 }  // namespace
@@ -599,16 +609,27 @@ void View::prepareFileMenu(Fm::FileMenu* menu) {
             menu->createAction()->setVisible(false);
         }
 
+        bool canDisasm = false;
+        if (allFiles && allNative && files.size() == 1) {
+            const auto& file = files.front();
+            auto localPath = file->path().localPath();
+            if (localPath) {
+                canDisasm = isDisassemblySupported(QString::fromUtf8(localPath.get()));
+            }
+        }
+
         if (allFiles && allNative) {
             auto* action = new QAction(QIcon::fromTheme(QStringLiteral("accessories-calculator")),
                                        tr("Calculate BLAKE3 Checksum"), menu);
             connect(action, &QAction::triggered, this, &View::onCalculateBlake3);
             menu->insertAction(menu->separator3(), action);
 
-            action = new QAction(QIcon::fromTheme(QStringLiteral("application-x-executable")),
-                                 tr("Disassemble (Capstone)"), menu);
-            connect(action, &QAction::triggered, this, &View::onDisassembleWithCapstone);
-            menu->insertAction(menu->separator3(), action);
+            if (canDisasm) {
+                action = new QAction(QIcon::fromTheme(QStringLiteral("application-x-executable")),
+                                     tr("Disassemble (Capstone)"), menu);
+                connect(action, &QAction::triggered, this, &View::onDisassembleWithCapstone);
+                menu->insertAction(menu->separator3(), action);
+            }
 
             action = new QAction(QIcon::fromTheme(QStringLiteral("accessories-text-editor")), tr("Open in Hex Editor"),
                                  menu);
