@@ -385,6 +385,26 @@ void MainWindow::setRTLIcons(bool isRTL) {
 }
 
 void MainWindow::onTabPageTitleChanged() {
+    auto* page = qobject_cast<TabPage*>(sender());
+    if (!page) {
+        page = currentPage();
+    }
+
+    if (page) {
+        if (ViewFrame* viewFrame = viewFrameForTabPage(page)) {
+            if (auto* stackedWidget = viewFrame->getStackedWidget()) {
+                const int index = stackedWidget->indexOf(page);
+                if (index >= 0) {
+                    QString tabText = page->title();
+                    tabText.replace(QLatin1Char('\n'), QLatin1Char(' '))
+                        .replace(QLatin1Char('&'), QStringLiteral("&&"));
+                    viewFrame->getTabBar()->setTabText(index, tabText);
+                    setTabIcon(page);
+                }
+            }
+        }
+    }
+
     updateUIForCurrentPage();
 }
 
