@@ -57,10 +57,6 @@ Settings::Settings()
       bookmarkOpenMethod_(OpenInCurrentTab),
       suCommand_(),
       terminal_(),
-      mountOnStartup_(true),
-      mountRemovable_(true),
-      autoRun_(true),
-      closeOnUnmount_(false),
       alwaysShowTabs_(true),
       showTabClose_(true),
       switchToNewTab_(false),
@@ -217,13 +213,6 @@ bool Settings::loadFile(QString filePath) {
 
     settings.endGroup();
 
-    settings.beginGroup(QStringLiteral("Volume"));
-    mountOnStartup_ = settings.value(QStringLiteral("MountOnStartup"), true).toBool();
-    mountRemovable_ = settings.value(QStringLiteral("MountRemovable"), true).toBool();
-    autoRun_ = settings.value(QStringLiteral("AutoRun"), true).toBool();
-    closeOnUnmount_ = settings.value(QStringLiteral("CloseOnUnmount"), true).toBool();
-    settings.endGroup();
-
     settings.beginGroup(QStringLiteral("Thumbnail"));
     showThumbnails_ = settings.value(QStringLiteral("ShowThumbnails"), true).toBool();
     setMaxThumbnailFileSize(settings.value(QStringLiteral("MaxThumbnailFileSize"), 4096).toInt());
@@ -341,13 +330,6 @@ bool Settings::saveFile(QString filePath) {
     settings.setValue(QStringLiteral("RecentFilesNumber"), recentFilesNumber_);
     settings.endGroup();
 
-    settings.endGroup();
-
-    settings.beginGroup(QStringLiteral("Volume"));
-    settings.setValue(QStringLiteral("MountOnStartup"), mountOnStartup_);
-    settings.setValue(QStringLiteral("MountRemovable"), mountRemovable_);
-    settings.setValue(QStringLiteral("AutoRun"), autoRun_);
-    settings.setValue(QStringLiteral("CloseOnUnmount"), closeOnUnmount_);
     settings.endGroup();
 
     settings.beginGroup(QStringLiteral("Thumbnail"));

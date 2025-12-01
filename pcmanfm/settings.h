@@ -165,22 +165,6 @@ class Settings : public QObject {
         Fm::Archiver::setDefaultArchiverByName(archiver_.toLocal8Bit().constData());
     }
 
-    bool mountOnStartup() const { return mountOnStartup_; }
-
-    void setMountOnStartup(bool mountOnStartup) { mountOnStartup_ = mountOnStartup; }
-
-    bool mountRemovable() { return mountRemovable_; }
-
-    void setMountRemovable(bool mountRemovable) { mountRemovable_ = mountRemovable; }
-
-    bool autoRun() const { return autoRun_; }
-
-    void setAutoRun(bool autoRun) { autoRun_ = autoRun; }
-
-    bool closeOnUnmount() const { return closeOnUnmount_; }
-
-    void setCloseOnUnmount(bool value) { closeOnUnmount_ = value; }
-
     bool alwaysShowTabs() const { return alwaysShowTabs_; }
 
     void setAlwaysShowTabs(bool alwaysShowTabs) { alwaysShowTabs_ = alwaysShowTabs; }
@@ -566,10 +550,6 @@ class Settings : public QObject {
     OpenDirTargetType bookmarkOpenMethod_;
     QString suCommand_;
     QString terminal_;
-    bool mountOnStartup_;
-    bool mountRemovable_;
-    bool autoRun_;
-    bool closeOnUnmount_;
 
     bool alwaysShowTabs_;
     bool showTabClose_;

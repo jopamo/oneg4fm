@@ -100,10 +100,6 @@ void MainWindow::on_actionReload_triggered() {
     }
 }
 
-void MainWindow::on_actionConnectToServer_triggered() {
-    static_cast<Application*>(qApp)->connectToServer();
-}
-
 void MainWindow::on_actionApplications_triggered() {
     chdir(Fm::FilePath::fromUri("menu://applications/"));
 }

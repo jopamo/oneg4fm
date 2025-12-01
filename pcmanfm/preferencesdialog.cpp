@@ -246,18 +246,7 @@ void PreferencesDialog::initThumbnailPage(Settings& settings) {
     ui.maxExternalThumbnailFileSize->setValue(m1 < 0 ? -1 : std::min(m1 / 1024, 2048));
 }
 
-void PreferencesDialog::initVolumePage(Settings& settings) {
-    ui.mountOnStartup->setChecked(settings.mountOnStartup());
-    ui.mountRemovable->setChecked(settings.mountRemovable());
-    ui.autoRun->setChecked(settings.autoRun());
-
-    if (settings.closeOnUnmount()) {
-        ui.closeOnUnmount->setChecked(true);
-    }
-    else {
-        ui.goHomeOnUnmount->setChecked(true);
-    }
-}
+void PreferencesDialog::initVolumePage(Settings& /*settings*/) {}
 
 void PreferencesDialog::initTerminals(Settings& settings) {
     // populate terminal list from libfm-qt known terminals
@@ -453,12 +442,7 @@ void PreferencesDialog::applyThumbnailPage(Settings& settings) {
     settings.setMaxExternalThumbnailFileSize(m < 0 ? -1 : m * 1024);
 }
 
-void PreferencesDialog::applyVolumePage(Settings& settings) {
-    settings.setAutoRun(ui.autoRun->isChecked());
-    settings.setMountOnStartup(ui.mountOnStartup->isChecked());
-    settings.setMountRemovable(ui.mountRemovable->isChecked());
-    settings.setCloseOnUnmount(ui.closeOnUnmount->isChecked());
-}
+void PreferencesDialog::applyVolumePage(Settings&) {}
 
 void PreferencesDialog::applyTerminal(Settings& settings) {
     // set the terminal and, if needed, store it in the user list

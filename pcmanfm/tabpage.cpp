@@ -562,24 +562,14 @@ QString TabPage::formatStatusText() {
 void TabPage::onFolderRemoved() {
     // the folder we're showing is removed, destroy the widget
     qDebug("folder removed");
-    Settings& settings = appSettings();
-
-    if (settings.closeOnUnmount()) {
-        QTimer::singleShot(0, this, &TabPage::deleteLater);
-    }
-    else {
-        chdir(Fm::FilePath::homeDir());
-    }
+    chdir(Fm::FilePath::homeDir());
 }
 
 void TabPage::onFolderUnmount() {
     // the folder we're showing is unmounted, destroy the widget
     qDebug("folder unmount");
 
-    if (appSettings().closeOnUnmount()) {
-        freeFolder();
-    }
-    else if (folder_) {
+    if (folder_) {
         // the folder shouldn't be freed here because the dir will be changed by
         // the slot of MainWindow but it should be disconnected from all signals
         disconnect(folder_.get(), nullptr, this, nullptr);
