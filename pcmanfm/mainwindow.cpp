@@ -367,6 +367,14 @@ void MainWindow::updateFromSettings(Settings& settings) {
     if (ui.menubar) {
         ui.menubar->setVisible(settings.showMenuBar());
     }
+
+    // Disable legacy virtual locations that are not supported
+    if (ui.actionComputer) {
+        ui.actionComputer->setVisible(false);
+    }
+    if (ui.actionNetwork) {
+        ui.actionNetwork->setVisible(false);
+    }
 }
 
 void MainWindow::setRTLIcons(bool isRTL) {

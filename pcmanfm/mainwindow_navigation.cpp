@@ -105,7 +105,8 @@ void MainWindow::on_actionConnectToServer_triggered() {
 }
 
 void MainWindow::on_actionComputer_triggered() {
-    chdir(Fm::FilePath::fromUri("computer:///"));
+    QMessageBox::information(this, tr("Not Supported"),
+                             tr("The legacy \"computer\" location is not supported in this build."));
 }
 
 void MainWindow::on_actionApplications_triggered() {
@@ -117,7 +118,8 @@ void MainWindow::on_actionTrash_triggered() {
 }
 
 void MainWindow::on_actionNetwork_triggered() {
-    chdir(Fm::FilePath::fromUri("network:///"));
+    QMessageBox::information(this, tr("Not Supported"),
+                             tr("Network browsing via \"network:///\" is not supported in this build."));
 }
 
 void MainWindow::on_actionDesktop_triggered() {

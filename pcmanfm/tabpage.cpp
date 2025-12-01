@@ -479,13 +479,7 @@ void TabPage::localizeTitle(const Fm::FilePath& path) {
             title_ = tr("Applications");
         }
         else if (!path.hasParent()) {
-            if (path.hasUriScheme("computer")) {
-                title_ = tr("Computer");
-            }
-            else if (path.hasUriScheme("network")) {
-                title_ = tr("Network");
-            }
-            else if (path.hasUriScheme("trash")) {
+            if (path.hasUriScheme("trash")) {
                 title_ = tr("Trash");
             }
         }
@@ -675,6 +669,14 @@ void TabPage::chdir(Fm::FilePath newPath, bool addHistory) {
     localizeTitle(newPath);
     Q_EMIT titleChanged();
 
+    // Block unsupported virtual locations
+    if (newPath.hasUriScheme("computer") || newPath.hasUriScheme("network")) {
+        QMessageBox::information(this, tr("Not Supported"),
+                                 tr("This location is not supported in this build of PCManFM-Qt."));
+        changingDir_ = false;
+        return;
+    }
+
     folder_ = Fm::Folder::fromPath(newPath);
     if (addHistory) {
         // add current path to browse history
@@ -691,8 +693,7 @@ void TabPage::chdir(Fm::FilePath newPath, bool addHistory) {
     Settings& settings = appSettings();
     folderModel_ = CachedFolderModel::modelFromFolder(folder_);
 
-    bool forceShortNames = !settings.showFullNames() || newPath.hasUriScheme("menu") || newPath.hasUriScheme("trash") ||
-                           newPath.hasUriScheme("network") || newPath.hasUriScheme("computer");
+    bool forceShortNames = !settings.showFullNames() || newPath.hasUriScheme("menu") || newPath.hasUriScheme("trash");
 
     folderModel_->setShowFullName(!forceShortNames);
     proxyFilter_->filterFullName(!forceShortNames);
