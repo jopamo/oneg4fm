@@ -25,16 +25,4 @@ std::unique_ptr<IFolderModel> BackendRegistry::createFolderModel(QObject* parent
     return std::make_unique<QtFolderModel>(parent);
 }
 
-ITrashBackend* BackendRegistry::trash() {
-    return nullptr;
-}
-
-IVolumeBackend* BackendRegistry::volume() {
-    return nullptr;
-}
-
-IRemoteBackend* BackendRegistry::remote() {
-    return nullptr;
-}
-
 }  // namespace PCManFM

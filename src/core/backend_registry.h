@@ -11,17 +11,12 @@
 #include "ifileops.h"
 #include "ifoldermodel.h"
 
-namespace PCManFM {
-
 class BackendRegistry {
    public:
     static void initDefaults();
 
     static std::unique_ptr<IFileOps> createFileOps();
     static std::unique_ptr<IFolderModel> createFolderModel(QObject* parent);
-    static ITrashBackend* trash();
-    static IVolumeBackend* volume();
-    static IRemoteBackend* remote();
 };
 
 }  // namespace PCManFM
