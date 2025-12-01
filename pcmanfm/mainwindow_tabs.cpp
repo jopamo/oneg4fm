@@ -215,6 +215,15 @@ void MainWindow::onTabBarCurrentChanged(int index) {
 
     auto* stackedWidget = viewFrame->getStackedWidget();
     stackedWidget->setCurrentIndex(index);
+    // Keep selection exclusive to the visible tab within this frame
+    for (int i = 0; i < stackedWidget->count(); ++i) {
+        if (i == index) {
+            continue;
+        }
+        if (auto* page = qobject_cast<TabPage*>(stackedWidget->widget(i))) {
+            page->deselectAll();
+        }
+    }
 
     if (viewFrame == activeViewFrame_) {
         updateUIForCurrentPage();

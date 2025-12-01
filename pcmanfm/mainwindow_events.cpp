@@ -108,9 +108,13 @@ void MainWindow::handleFocusIn(QWidget* watchedWidget) {
                 viewFrame->setPalette(getInactivePalette(viewFrame->palette()));
             }
 
-            // Ensure selections are exclusive to the active frame
-            if (TabPage* page = currentPage(viewFrame)) {
-                page->deselectAll();
+            // Ensure selections are exclusive to the active frame (all tabs)
+            if (auto* sw = viewFrame->getStackedWidget()) {
+                for (int idx = 0; idx < sw->count(); ++idx) {
+                    if (auto* page = qobject_cast<TabPage*>(sw->widget(idx))) {
+                        page->deselectAll();
+                    }
+                }
             }
         }
     }
