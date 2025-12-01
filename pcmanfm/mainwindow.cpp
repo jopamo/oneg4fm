@@ -136,6 +136,11 @@ MainWindow::MainWindow(Fm::FilePath path)
     sortColumnGroup->addAction(ui.actionByOwner);
     sortColumnGroup->addAction(ui.actionByGroup);
 
+    auto* sortOrderGroup = new QActionGroup(this);
+    sortOrderGroup->setExclusive(true);
+    sortOrderGroup->addAction(ui.actionAscending);
+    sortOrderGroup->addAction(ui.actionDescending);
+
     setActionIcon(ui.actionIconView, QStringLiteral("view-list-icons"), QStyle::SP_FileDialogContentsView);
     setActionIcon(ui.actionThumbnailView, QStringLiteral("view-list-icons"), QStyle::SP_FileDialogContentsView);
     setActionIcon(ui.actionCompactView, QStringLiteral("view-list-details"), QStyle::SP_FileDialogDetailedView);
