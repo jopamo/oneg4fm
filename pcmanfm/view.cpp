@@ -40,6 +40,14 @@ extern "C" {
 #include "mainwindow.h"
 #include "settings.h"
 
+#include <array>
+#include <cerrno>
+#include <cstring>
+#include <fcntl.h>
+#include <memory>
+#include <sys/stat.h>
+#include <unistd.h>
+
 namespace PCManFM {
 
 namespace {
@@ -63,30 +71,66 @@ QHash<QString, ChecksumWindowWidgets>& checksumWindows() {
 }
 
 bool computeBlake3ForFile(const QString& path, QString* hashOut, QString* errorOut) {
-    QFile file(path);
-    if (!file.open(QIODevice::ReadOnly)) {
+    const QByteArray nativePath = QFile::encodeName(path);
+
+    struct stat st{};
+    if (lstat(nativePath.constData(), &st) != 0) {
         if (errorOut) {
-            *errorOut = file.errorString();
+            *errorOut = QString::fromLocal8Bit(strerror(errno));
+        }
+        return false;
+    }
+    if (S_ISLNK(st.st_mode)) {
+        if (errorOut) {
+            *errorOut = QObject::tr("Symlinks are not supported for checksum calculation.");
+        }
+        return false;
+    }
+    if (!S_ISREG(st.st_mode)) {
+        if (errorOut) {
+            *errorOut = QObject::tr("Not a regular file.");
         }
         return false;
     }
 
+    int flags = O_RDONLY | O_CLOEXEC;
+#ifdef O_NOFOLLOW
+    flags |= O_NOFOLLOW;
+#endif
+    const int fd = ::open(nativePath.constData(), flags);
+    if (fd < 0) {
+        if (errorOut) {
+            *errorOut = QString::fromLocal8Bit(strerror(errno));
+        }
+        return false;
+    }
+
+    auto fdCloser = [](int* f) {
+        if (f && *f >= 0) {
+            ::close(*f);
+        }
+    };
+    std::unique_ptr<int, decltype(fdCloser)> fdGuard(new int(fd), fdCloser);
+
     blake3_hasher hasher;
     blake3_hasher_init(&hasher);
 
-    QByteArray buffer(64 * 1024, Qt::Uninitialized);
+    std::array<char, 64 * 1024> buffer{};
     while (true) {
-        const qint64 bytesRead = file.read(buffer.data(), buffer.size());
+        const ssize_t bytesRead = ::read(fd, buffer.data(), buffer.size());
         if (bytesRead > 0) {
-            blake3_hasher_update(&hasher, reinterpret_cast<const uint8_t*>(buffer.constData()),
+            blake3_hasher_update(&hasher, reinterpret_cast<const uint8_t*>(buffer.data()),
                                  static_cast<size_t>(bytesRead));
         }
         else if (bytesRead == 0) {
             break;
         }
         else {
+            if (errno == EINTR) {
+                continue;
+            }
             if (errorOut) {
-                *errorOut = file.errorString();
+                *errorOut = QString::fromLocal8Bit(strerror(errno));
             }
             return false;
         }
