@@ -197,6 +197,13 @@ void HexEditorWindow::setupUi() {
         toolbar->addAction(QIcon::fromTheme(QStringLiteral("view-list-bookmarks")), tr("List Bookmarks"));
     connect(bookmarkListAction_, &QAction::triggered, this, &HexEditorWindow::listBookmarks);
 
+    diffAction_ = toolbar->addAction(QIcon::fromTheme(QStringLiteral("diff")), tr("Diff With File…"));
+    connect(diffAction_, &QAction::triggered, this, &HexEditorWindow::diffWithFile);
+    nextDiffAction_ = toolbar->addAction(QIcon::fromTheme(QStringLiteral("go-down")), tr("Next Diff"));
+    connect(nextDiffAction_, &QAction::triggered, this, [this] { nextDiff(true); });
+    prevDiffAction_ = toolbar->addAction(QIcon::fromTheme(QStringLiteral("go-up")), tr("Prev Diff"));
+    connect(prevDiffAction_, &QAction::triggered, this, [this] { nextDiff(false); });
+
     insertToggleAction_ = toolbar->addAction(QIcon::fromTheme(QStringLiteral("insert-text")), tr("Insert mode"));
     insertToggleAction_->setCheckable(true);
     insertToggleAction_->setChecked(false);
@@ -374,6 +381,16 @@ void HexEditorWindow::updateActionStates(bool hasSelection) {
     }
     if (bookmarkListAction_) {
         bookmarkListAction_->setEnabled(hasDoc && !bookmarks_.empty());
+    }
+    if (diffAction_) {
+        diffAction_->setEnabled(hasDoc);
+    }
+    const bool hasDiffs = hasDoc && !diffOffsets_.empty();
+    if (nextDiffAction_) {
+        nextDiffAction_->setEnabled(hasDiffs);
+    }
+    if (prevDiffAction_) {
+        prevDiffAction_->setEnabled(hasDiffs);
     }
 }
 
@@ -911,6 +928,88 @@ void HexEditorWindow::listBookmarks() {
         lines << tr("0x%1 (%2): %3").arg(bm.offset, 0, 16).arg(bm.offset).arg(bm.label);
     }
     QMessageBox::information(this, tr("Bookmarks"), lines.join(QStringLiteral("\n")));
+}
+
+void HexEditorWindow::diffWithFile() {
+    if (!doc_) {
+        return;
+    }
+    const QString otherPath = QFileDialog::getOpenFileName(this, tr("Select file to diff"),
+                                                           doc_->path().isEmpty() ? QString() : doc_->path());
+    if (otherPath.isEmpty()) {
+        return;
+    }
+
+    QFile other(otherPath);
+    if (!other.open(QIODevice::ReadOnly)) {
+        QMessageBox::warning(this, tr("Diff"), tr("Cannot open %1").arg(otherPath));
+        return;
+    }
+
+    diffOffsets_.clear();
+    currentDiffIndex_ = -1;
+
+    QString error;
+    const std::uint64_t len = doc_->size();
+    const std::uint64_t otherLen = static_cast<std::uint64_t>(other.size());
+    const std::uint64_t maxLen = std::max<std::uint64_t>(len, otherLen);
+
+    constexpr std::uint64_t kChunk = 256 * 1024;
+    std::uint64_t pos = 0;
+    while (pos < maxLen) {
+        const std::uint64_t chunk = std::min<std::uint64_t>(kChunk, maxLen - pos);
+        QByteArray left;
+        if (!doc_->readBytes(pos, chunk, left, error)) {
+            QMessageBox::warning(this, tr("Diff"), error);
+            diffOffsets_.clear();
+            break;
+        }
+        QByteArray right = other.read(static_cast<qint64>(chunk));
+        if (right.size() < static_cast<int>(chunk)) {
+            right.resize(static_cast<int>(chunk));
+        }
+        for (std::uint64_t i = 0; i < chunk; ++i) {
+            const bool diff = left.size() > static_cast<int>(i)
+                                  ? (static_cast<unsigned char>(left.at(static_cast<int>(i))) !=
+                                     static_cast<unsigned char>(right.at(static_cast<int>(i))))
+                                  : (static_cast<unsigned char>(right.at(static_cast<int>(i))) != 0);
+            if (diff) {
+                diffOffsets_.push_back(pos + i);
+            }
+        }
+        pos += chunk;
+    }
+
+    if (diffOffsets_.empty()) {
+        QMessageBox::information(this, tr("Diff"), tr("Files are identical."));
+    }
+    else {
+        currentDiffIndex_ = 0;
+        QMessageBox::information(this, tr("Diff"), tr("Found %1 differing byte(s).").arg(diffOffsets_.size()));
+        nextDiff(true);
+    }
+    updateActionStates(view_ && view_->selection().has_value());
+}
+
+void HexEditorWindow::nextDiff(bool forward) {
+    if (diffOffsets_.empty() || !view_) {
+        return;
+    }
+    if (currentDiffIndex_ < 0) {
+        currentDiffIndex_ = 0;
+    }
+    if (forward) {
+        currentDiffIndex_ = (currentDiffIndex_ + 1) % static_cast<int>(diffOffsets_.size());
+    }
+    else {
+        currentDiffIndex_ =
+            (currentDiffIndex_ - 1 + static_cast<int>(diffOffsets_.size())) % static_cast<int>(diffOffsets_.size());
+    }
+    const std::uint64_t offset = diffOffsets_[static_cast<std::size_t>(currentDiffIndex_)];
+    view_->clearSelection();
+    view_->setCursorOffset(offset);
+    statusBar()->showMessage(
+        tr("Diff %1/%2 at 0x%3").arg(currentDiffIndex_ + 1).arg(diffOffsets_.size()).arg(offset, 0, 16));
 }
 
 void HexEditorWindow::updateInspector(std::uint64_t offset) {

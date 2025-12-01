@@ -57,6 +57,8 @@ class HexEditorWindow : public QMainWindow {
     void addBookmark();
     void listBookmarks();
     void jumpBookmark(bool forward);
+    void diffWithFile();
+    void nextDiff(bool forward);
 
     std::unique_ptr<HexDocument> doc_;
     QPointer<HexEditorView> view_;
@@ -88,6 +90,9 @@ class HexEditorWindow : public QMainWindow {
     QAction* bookmarkPrevAction_ = nullptr;
     QAction* bookmarkNextAction_ = nullptr;
     QAction* bookmarkListAction_ = nullptr;
+    QAction* diffAction_ = nullptr;
+    QAction* nextDiffAction_ = nullptr;
+    QAction* prevDiffAction_ = nullptr;
 
     QByteArray lastSearch_;
     QByteArray lastReplace_;
@@ -113,6 +118,8 @@ class HexEditorWindow : public QMainWindow {
         QString label;
     };
     std::vector<Bookmark> bookmarks_;
+    std::vector<std::uint64_t> diffOffsets_;
+    int currentDiffIndex_ = -1;
 };
 
 }  // namespace PCManFM
