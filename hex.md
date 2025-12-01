@@ -1,71 +1,71 @@
-**Hex Editor Feature Checklist**
+**Hex Editor Feature Checklist (progress)**
 
 - Data views
-  - Hex view with 00–FF columns and fixed-width rows (8/16 bytes) plus offset column
-  - ASCII/character view (printable chars, dots for non-printable)
-  - Optional decoded views (integers, floats, UTF-8/UTF-16, etc.)
+  - [x] Hex view with fixed-width rows and offset column
+  - [x] ASCII/character view
+  - [x] Decoded previews (ints, floats, UTF-8) via inspector
 
 - Editing modes
-  - Direct in-place byte edit in hex and ASCII panes
-  - Insert vs. overwrite mode toggle (insert shifts data)
+  - [x] Direct byte edit in hex and ASCII panes
+  - [x] Insert vs. overwrite toggle
 
 - Navigation & addressing
-  - Jump to offset (hex/decimal), start/end of file
-  - Show current cursor offset (hex + decimal)
+  - [x] Jump to offset (hex/decimal), start/end
+  - [x] Show current cursor offset (hex + decimal)
 
 - Selection & basic ops
-  - Range selection
-  - Copy/cut/paste raw bytes; paste hex text
-  - Fill selection with pattern (00/FF/repeating)
-  - Delete/insert blocks
+  - [x] Range selection
+  - [x] Copy/cut/paste raw bytes; paste hex text
+  - [ ] Fill selection with pattern (00/FF/repeating)
+  - [x] Delete/insert blocks
 
 - Search & replace
-  - Search hex patterns (e.g., DE AD BE EF)
-  - Search text (ASCII, UTF-8, UTF-16), optional wildcard/regex
-  - Find next/previous and find-all with match list
-  - Replace for both hex and text
+  - [x] Search hex patterns
+  - [x] Search text (UTF-8; UTF-16 pending)
+  - [x] Find next/previous and find-all summary
+  - [x] Replace (single/all) for hex/text
+  - [ ] Wildcard/regex search
 
 - Data interpretation
-  - View selected bytes as signed/unsigned ints (sizes, endianness)
-  - Floats/doubles
-  - Timestamps (UNIX epoch, FILETIME, etc.)
-  - Quick “inspect selection as…” widget
+  - [x] View bytes as signed/unsigned ints (LE/BE)
+  - [x] Floats/doubles
+  - [ ] Timestamps (UNIX, FILETIME, etc.)
+  - [x] Inspector widget for selection/cursor
 
 - File safety & operations
-  - Efficient large-file support (paging/mmap)
-  - Read-only mode
-  - Backup/undo safety: temp file, diff/preview, or transactional save
-  - Multi-level undo/redo
+  - [~] Efficient large-file support (paged core; further bounding TBD)
+  - [ ] Read-only mode
+  - [ ] Backups/diff preview on save
+  - [x] Multi-level undo/redo
 
 - Structure/templates
-  - Binary templates/structs with named fields, nested structures, arrays
-  - Live decode + navigation between template fields and bytes
+  - [ ] Binary templates/structs with fields/arrays
+  - [ ] Live decode + navigation between template fields and bytes
 
 - Analysis tools
-  - Checksums/hashes over selection (CRC32, MD5, SHA-1/2, etc.)
-  - Byte frequency/entropy stats
-  - XOR/arithmetic ops on ranges
+  - [x] Checksums/hashes (CRC32, SHA-256) over selection/whole file
+  - [x] Byte frequency + entropy stats
+  - [ ] XOR/arithmetic ops on ranges
 
 - Bookmarks & annotations
-  - Bookmarks with labels
-  - Comments/annotations on ranges
-  - Color highlighting for regions
+  - [x] Bookmarks with labels and navigation
+  - [ ] Comments/annotations and color regions
 
 - Multi-file & diff
-  - Open multiple files
-  - Binary diff view: compare by offset, side-by-side, navigate differences
+  - [x] Binary diff against another file; navigate differences
+  - [ ] Side-by-side diff view
 
 - Encoding/endian helpers
-  - Byte swap (16/32/64-bit)
-  - Convert text encodings for ranges
-  - View as code points / escaped strings for copy/paste
+  - [ ] Byte swap (16/32/64-bit)
+  - [ ] Text encoding conversions for ranges
+  - [ ] View as code points/escaped strings
 
 - Scripting & automation
-  - Macro recording or scripting (Python/Lua/etc.)
-  - Batch operations
-  - Custom decoders/encoders
+  - [ ] Macro/scripting (Python/Lua/etc.)
+  - [ ] Batch operations
+  - [ ] Custom decoders/encoders
 
 - UI/UX essentials
-  - Configurable bytes per row, font, and color scheme
-  - Keyboard-centric workflow (jump/edit/search without mouse)
-  - Status bar: offset, value in multiple formats, selection size, insert/overwrite indicator
+  - [ ] Configurable bytes per row, font, color scheme
+  - [x] Keyboard-centric workflow for jump/edit/search
+  - [x] Status bar with offset/value/selection/mode indicators
