@@ -330,8 +330,6 @@ bool Settings::saveFile(QString filePath) {
     settings.setValue(QStringLiteral("RecentFilesNumber"), recentFilesNumber_);
     settings.endGroup();
 
-    settings.endGroup();
-
     settings.beginGroup(QStringLiteral("Thumbnail"));
     settings.setValue(QStringLiteral("ShowThumbnails"), showThumbnails_);
     settings.setValue(QStringLiteral("MaxThumbnailFileSize"), maxThumbnailFileSize());
