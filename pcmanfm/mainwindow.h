@@ -262,6 +262,7 @@ class MainWindow : public QMainWindow {
     ViewFrame* viewFrameForTabPage(TabPage* page);
     int addTabWithPage(TabPage* page, ViewFrame* viewFrame, Fm::FilePath path = Fm::FilePath());
     void dropTab(QObject* source);
+    void applyFrameActivation(ViewFrame* newActiveFrame);
     void setTabIcon(TabPage* tabPage);
 
    private:

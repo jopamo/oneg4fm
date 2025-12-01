@@ -45,7 +45,7 @@ void MainWindow::addViewFrame(const Fm::FilePath& path) {
     ui.viewSplitter->addWidget(viewFrame);
 
     if (ui.viewSplitter->count() == 1) {
-        activeViewFrame_ = viewFrame;
+        applyFrameActivation(viewFrame);
     }
     else {
         // Equalize sizes after the event loop processes the new widget addition
@@ -56,6 +56,7 @@ void MainWindow::addViewFrame(const Fm::FilePath& path) {
                 QList<int> sizes(count, widthPerFrame);
                 ui.viewSplitter->setSizes(sizes);
             }
+            applyFrameActivation(activeViewFrame_);
         });
     }
 

@@ -59,6 +59,32 @@ QPalette getInactivePalette(const QPalette& sourcePalette) {
 
 }  // namespace
 
+void MainWindow::applyFrameActivation(ViewFrame* newActiveFrame) {
+    if (newActiveFrame) {
+        activeViewFrame_ = newActiveFrame;
+    }
+
+    for (int i = 0; i < ui.viewSplitter->count(); ++i) {
+        auto* viewFrame = qobject_cast<ViewFrame*>(ui.viewSplitter->widget(i));
+        if (!viewFrame) {
+            continue;
+        }
+
+        const bool isActive = (viewFrame == activeViewFrame_);
+        viewFrame->setPalette(isActive ? qApp->palette() : getInactivePalette(viewFrame->palette()));
+
+        if (!isActive) {
+            if (auto* sw = viewFrame->getStackedWidget()) {
+                for (int idx = 0; idx < sw->count(); ++idx) {
+                    if (auto* page = qobject_cast<TabPage*>(sw->widget(idx))) {
+                        page->deselectAll();
+                    }
+                }
+            }
+        }
+    }
+}
+
 bool MainWindow::eventFilter(QObject* watched, QEvent* event) {
     auto* watchedWidget = qobject_cast<QWidget*>(watched);
     if (!watchedWidget) {
@@ -92,30 +118,9 @@ void MainWindow::handleFocusIn(QWidget* watchedWidget) {
         if (viewFrame->isAncestorOf(watchedWidget)) {
             // This is the active frame
             if (activeViewFrame_ != viewFrame) {
-                activeViewFrame_ = viewFrame;
                 updateUIForCurrentPage(false);  // WARNING: never set focus here to avoid recursion!
             }
-
-            // Restore standard palette if needed
-            if (viewFrame->palette().color(QPalette::Base) != qApp->palette().color(QPalette::Base)) {
-                viewFrame->setPalette(qApp->palette());
-            }
-        }
-        else {
-            // This is an inactive frame
-            // If it currently looks "active" (standard palette), dim it.
-            if (viewFrame->palette().color(QPalette::Base) == qApp->palette().color(QPalette::Base)) {
-                viewFrame->setPalette(getInactivePalette(viewFrame->palette()));
-            }
-
-            // Ensure selections are exclusive to the active frame (all tabs)
-            if (auto* sw = viewFrame->getStackedWidget()) {
-                for (int idx = 0; idx < sw->count(); ++idx) {
-                    if (auto* page = qobject_cast<TabPage*>(sw->widget(idx))) {
-                        page->deselectAll();
-                    }
-                }
-            }
+            applyFrameActivation(viewFrame);
         }
     }
 }
@@ -141,7 +146,7 @@ bool MainWindow::handleTabKey(QKeyEvent* ke, QWidget* watchedWidget) {
             auto* nextFrame = qobject_cast<ViewFrame*>(ui.viewSplitter->widget(nextIndex));
 
             if (nextFrame) {
-                activeViewFrame_ = nextFrame;
+                applyFrameActivation(nextFrame);
                 updateUIForCurrentPage();  // This sets focus to the view inside the frame
                 return true;
             }

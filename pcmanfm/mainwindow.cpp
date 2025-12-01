@@ -124,6 +124,7 @@ MainWindow::MainWindow(Fm::FilePath path)
 
     // Add initial view frame
     addViewFrame(path);
+    applyFrameActivation(activeViewFrame_);
 
     // Create the path bar/location bar
     createPathBar(appSettings().pathBarButtons());
