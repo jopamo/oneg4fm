@@ -216,7 +216,6 @@
     </property>
     <addaction name="actionHome"/>
     <addaction name="actionDesktop"/>
-    <addaction name="actionTrash"/>
     <addaction name="actionApplications"/>
     <addaction name="separator"/>
     <addaction name="actionGoBack"/>
@@ -368,15 +367,6 @@
    </property>
    <property name="shortcut">
     <string>Ctrl+H</string>
-   </property>
-  </action>
-  <action name="actionTrash">
-   <property name="icon">
-    <iconset theme="user-trash">
-     <normaloff>.</normaloff>.</iconset>
-   </property>
-   <property name="text">
-    <string>&amp;Trash</string>
    </property>
   </action>
   <action name="actionDesktop">
