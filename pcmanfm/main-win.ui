@@ -217,9 +217,7 @@
     <addaction name="actionHome"/>
     <addaction name="actionDesktop"/>
     <addaction name="actionTrash"/>
-    <addaction name="actionComputer"/>
     <addaction name="actionApplications"/>
-    <addaction name="actionNetwork"/>
     <addaction name="separator"/>
     <addaction name="actionGoBack"/>
     <addaction name="actionGoForward"/>
@@ -374,15 +372,6 @@
     <string>Ctrl+H</string>
    </property>
   </action>
-  <action name="actionComputer">
-   <property name="icon">
-    <iconset theme="computer">
-     <normaloff>.</normaloff>.</iconset>
-   </property>
-   <property name="text">
-    <string>&amp;Computer</string>
-   </property>
-  </action>
   <action name="actionTrash">
    <property name="icon">
     <iconset theme="user-trash">
@@ -390,11 +379,6 @@
    </property>
    <property name="text">
     <string>&amp;Trash</string>
-   </property>
-  </action>
-  <action name="actionNetwork">
-   <property name="text">
-    <string>&amp;Network</string>
    </property>
   </action>
   <action name="actionDesktop">

@@ -104,22 +104,12 @@ void MainWindow::on_actionConnectToServer_triggered() {
     static_cast<Application*>(qApp)->connectToServer();
 }
 
-void MainWindow::on_actionComputer_triggered() {
-    QMessageBox::information(this, tr("Not Supported"),
-                             tr("The legacy \"computer\" location is not supported in this build."));
-}
-
 void MainWindow::on_actionApplications_triggered() {
     chdir(Fm::FilePath::fromUri("menu://applications/"));
 }
 
 void MainWindow::on_actionTrash_triggered() {
     chdir(Fm::FilePath::fromUri("trash:///"));
-}
-
-void MainWindow::on_actionNetwork_triggered() {
-    QMessageBox::information(this, tr("Not Supported"),
-                             tr("Network browsing via \"network:///\" is not supported in this build."));
 }
 
 void MainWindow::on_actionDesktop_triggered() {

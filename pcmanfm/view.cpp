@@ -42,8 +42,7 @@ View::~View() = default;
 void View::onFileClicked(int type, const std::shared_ptr<const Fm::FileInfo>& fileInfo) {
     if (type == MiddleClick) {
         if (fileInfo && fileInfo->isDir()) {
-            // fileInfo->path() should not be used directly here
-            // it can misbehave for locations like computer:/// or network:///
+            // fileInfo->path() should not be used directly here for virtual locations
             Fm::FileInfoList files;
             files.emplace_back(fileInfo);
             launchFiles(std::move(files), true);

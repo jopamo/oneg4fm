@@ -669,14 +669,6 @@ void TabPage::chdir(Fm::FilePath newPath, bool addHistory) {
     localizeTitle(newPath);
     Q_EMIT titleChanged();
 
-    // Block unsupported virtual locations
-    if (newPath.hasUriScheme("computer") || newPath.hasUriScheme("network")) {
-        QMessageBox::information(this, tr("Not Supported"),
-                                 tr("This location is not supported in this build of PCManFM-Qt."));
-        changingDir_ = false;
-        return;
-    }
-
     folder_ = Fm::Folder::fromPath(newPath);
     if (addHistory) {
         // add current path to browse history

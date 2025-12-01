@@ -161,9 +161,7 @@ class MainWindow : public QMainWindow {
     void on_actionPathButtons_triggered(bool checked);
 
     void on_actionApplications_triggered();
-    void on_actionComputer_triggered();
     void on_actionTrash_triggered();
-    void on_actionNetwork_triggered();
     void on_actionDesktop_triggered();
     void on_actionAddToBookmarks_triggered();
     void on_actionEditBookmarks_triggered();
