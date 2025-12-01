@@ -31,7 +31,10 @@ set(pcmanfm_SRCS
     ../src/backends/qt/qt_fileinfo.cpp
     ../src/backends/qt/qt_foldermodel.cpp
     ../src/core/fs_ops.cpp
+    ../src/core/archive_writer.cpp
     ../src/ui/filepropertiesdialog.cpp
+    ../src/ui/archivejob.cpp
+    ../src/ui/archiveextractjob.cpp
     ../src/ui/fsqt.cpp
     ../src/core/ifoldermodel.h
 )
@@ -101,15 +104,18 @@ target_include_directories(pcmanfm-qt
         "${CMAKE_CURRENT_BINARY_DIR}/pcmanfm-qt_autogen/include"
         ${GIO_INCLUDE_DIRS}
         ${BLAKE3_INCLUDE_DIRS}
+        ${LIBARCHIVE_INCLUDE_DIRS}
         pcmanfm
 )
 
 target_link_libraries(pcmanfm-qt
     Qt6::Widgets
     Qt6::DBus
+    Qt6::Concurrent
     fm-qt6
     ${GIO_LIBRARIES}
     ${BLAKE3_LIBRARIES}
+    ${LIBARCHIVE_LIBRARIES}
 )
 
 install(TARGETS pcmanfm-qt RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})

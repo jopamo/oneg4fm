@@ -8,6 +8,8 @@ This file tracks work items, planned features, and technical debt for the PCManF
 - [ ] Route real file mutations in app code through `IFileOps`/the core (copy/move/delete/rename/mkdir/permissions/config writes) in: `pcmanfm/mainwindow_fileops.cpp`, `pcmanfm/mainwindow.cpp`, `pcmanfm/filepropertiesdialog.cpp`, `pcmanfm/xdgdir.cpp`, `pcmanfm/application.cpp`, `pcmanfm/settings.cpp`
 - [ ] Keep UI-only metadata/listing in Qt but add a guard/grep check to prevent `QFile`/`QSaveFile`/`QDir` mutations outside adapters (`backends/qt` + UI discovery)
 - [ ] Expand Qt backend coverage (remote URIs, trash, volumes) without GIO once the POSIX core is in place
+- [x] Replace libfm-qt archiver actions with in-process tar/tar.zst compression backed by POSIX I/O + libarchive
+- [x] Add in-process tar.zst extraction (libarchive + POSIX) wired to the context menu for native archives
 - [ ] Remove legacy libfm/libfm-qt code paths and includes
 
 ## UI/UX Improvements

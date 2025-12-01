@@ -20,12 +20,17 @@
 #include <QMessageBox>
 #include <QPointer>
 #include <QPushButton>
+#include <QFileDialog>
+#include <QFileInfo>
+#include <QProgressDialog>
 #include <QPlainTextEdit>
 #include <QClipboard>
 #include <QStringList>
 #include <QVBoxLayout>
 
 #include <string>
+#include <algorithm>
+#include <limits>
 
 // LibFM-Qt Headers
 #include <libfm-qt6/filemenu.h>
@@ -38,6 +43,8 @@
 #include "mainwindow.h"
 #include "settings.h"
 #include "../src/core/fs_ops.h"
+#include "../src/ui/archivejob.h"
+#include "../src/ui/archiveextractjob.h"
 
 namespace PCManFM {
 
@@ -62,6 +69,21 @@ QHash<QString, ChecksumWindowWidgets>& checksumWindows() {
 }
 
 }  // namespace
+
+void View::removeLibfmArchiverActions(Fm::FileMenu* menu) {
+    if (!menu) {
+        return;
+    }
+    const auto actions = menu->actions();
+    for (QAction* action : actions) {
+        const QString text = action->text().toLower();
+        if (text.contains(QStringLiteral("compress")) || text.contains(QStringLiteral("extract here")) ||
+            text.contains(QStringLiteral("extract to"))) {
+            menu->removeAction(action);
+            action->deleteLater();
+        }
+    }
+}
 
 View::View(Fm::FolderView::ViewMode mode, QWidget* parent) : Fm::FolderView(mode, parent) {
     updateFromSettings(appSettings());
@@ -304,6 +326,107 @@ void View::onSearch() {
     // reserved for integrating a search action from the context menu
 }
 
+void View::startArchiveCompression(const QStringList& paths) {
+    if (paths.isEmpty()) {
+        return;
+    }
+
+    QFileInfo first(paths.first());
+    QString baseDir = first.absolutePath();
+    QString defaultStem = first.completeBaseName();
+    if (defaultStem.isEmpty()) {
+        defaultStem = QStringLiteral("archive");
+    }
+    QString suggested = baseDir + QLatin1Char('/') + defaultStem + QStringLiteral(".tar.zst");
+
+    const QString dest = QFileDialog::getSaveFileName(window(), tr("Save Archive"), suggested,
+                                                      tr("tar.zst archive (*.tar.zst);;Tar archive (*.tar)"));
+    if (dest.isEmpty()) {
+        return;
+    }
+
+    QString outputPath = dest;
+    if (!outputPath.endsWith(QStringLiteral(".tar.zst")) && !outputPath.endsWith(QStringLiteral(".tar"))) {
+        outputPath += QStringLiteral(".tar.zst");
+    }
+
+    auto* job = new ArchiveJob(this);
+    auto* dialog = new QProgressDialog(tr("Compressing files…"), tr("Cancel"), 0, 0, window());
+    dialog->setWindowModality(Qt::WindowModal);
+    dialog->setAutoClose(false);
+    dialog->setAutoReset(false);
+    dialog->setMinimumDuration(0);
+    dialog->setValue(0);
+    dialog->setLabelText(tr("Compressing files…"));
+
+    connect(dialog, &QProgressDialog::canceled, job, &ArchiveJob::cancel);
+    connect(job, &ArchiveJob::progress, this, [dialog](quint64 done, quint64 total, const QString& current) {
+        if (total > 0 && total <= static_cast<quint64>(std::numeric_limits<int>::max())) {
+            if (dialog->maximum() != static_cast<int>(total)) {
+                dialog->setMaximum(static_cast<int>(total));
+            }
+            dialog->setValue(static_cast<int>(std::min<quint64>(done, total)));
+        }
+        else {
+            dialog->setMaximum(0);  // busy indicator
+        }
+        if (!current.isEmpty()) {
+            dialog->setLabelText(tr("Compressing %1").arg(current));
+        }
+    });
+    connect(job, &ArchiveJob::finished, this, [this, dialog, job](bool ok, const QString& error) {
+        dialog->hide();
+        dialog->deleteLater();
+        job->deleteLater();
+        if (!ok) {
+            QMessageBox::warning(window(), tr("Compression failed"),
+                                 error.isEmpty() ? tr("The archive could not be created.") : error);
+        }
+    });
+
+    job->start(paths, outputPath);
+    dialog->show();
+}
+
+void View::startArchiveExtraction(const QString& archivePath, const QString& destinationDir) {
+    auto* job = new ArchiveExtractJob(this);
+    auto* dialog = new QProgressDialog(tr("Extracting archive…"), tr("Cancel"), 0, 0, window());
+    dialog->setWindowModality(Qt::WindowModal);
+    dialog->setAutoClose(false);
+    dialog->setAutoReset(false);
+    dialog->setMinimumDuration(0);
+    dialog->setValue(0);
+    dialog->setLabelText(tr("Extracting files…"));
+
+    connect(dialog, &QProgressDialog::canceled, job, &ArchiveExtractJob::cancel);
+    connect(job, &ArchiveExtractJob::progress, this, [dialog](quint64 done, quint64 total, const QString& current) {
+        if (total > 0 && total <= static_cast<quint64>(std::numeric_limits<int>::max())) {
+            if (dialog->maximum() != static_cast<int>(total)) {
+                dialog->setMaximum(static_cast<int>(total));
+            }
+            dialog->setValue(static_cast<int>(std::min<quint64>(done, total)));
+        }
+        else {
+            dialog->setMaximum(0);
+        }
+        if (!current.isEmpty()) {
+            dialog->setLabelText(tr("Extracting %1").arg(current));
+        }
+    });
+    connect(job, &ArchiveExtractJob::finished, this, [this, dialog, job](bool ok, const QString& error) {
+        dialog->hide();
+        dialog->deleteLater();
+        job->deleteLater();
+        if (!ok) {
+            QMessageBox::warning(window(), tr("Extraction failed"),
+                                 error.isEmpty() ? tr("The archive could not be extracted.") : error);
+        }
+    });
+
+    job->start(archivePath, destinationDir);
+    dialog->show();
+}
+
 void View::prepareFileMenu(Fm::FileMenu* menu) {
     Settings& settings = appSettings();
     menu->setConfirmDelete(settings.confirmDelete());
@@ -378,6 +501,59 @@ void View::prepareFileMenu(Fm::FileMenu* menu) {
             connect(action, &QAction::triggered, this, &View::onNewWindow);
             menu->insertAction(menu->separator1(), action);
         }
+    }
+
+    QStringList compressPaths;
+    QString extractArchivePath;
+    QString extractDestination;
+    if (allNative && !files.empty()) {
+        compressPaths.reserve(static_cast<int>(files.size()));
+        for (const auto& fi : files) {
+            if (!fi || !fi->isNative()) {
+                compressPaths.clear();
+                break;
+            }
+            auto localPath = fi->path().localPath();
+            if (!localPath) {
+                compressPaths.clear();
+                break;
+            }
+            const QString pathStr = QString::fromUtf8(localPath.get());
+            compressPaths << pathStr;
+            if (files.size() == 1 && !fi->isDir() && extractArchivePath.isEmpty()) {
+                if (pathStr.endsWith(QStringLiteral(".tar.zst"), Qt::CaseInsensitive)) {
+                    QFileInfo info(pathStr);
+                    QString stem = info.fileName();
+                    stem.chop(QStringLiteral(".tar.zst").size());
+                    if (stem.isEmpty()) {
+                        stem = QStringLiteral("extracted");
+                    }
+                    extractArchivePath = pathStr;
+                    extractDestination = info.absolutePath() + QLatin1Char('/') + stem;
+                }
+            }
+        }
+        if (files.size() == 1 && extractArchivePath == compressPaths.value(0)) {
+            // Do not offer "Compress" when right-clicking a tar.zst archive itself
+            compressPaths.clear();
+        }
+    }
+
+    removeLibfmArchiverActions(menu);
+
+    if (!extractArchivePath.isEmpty() && !extractDestination.isEmpty()) {
+        auto* action = new QAction(QIcon::fromTheme(QStringLiteral("archive-extract")), tr("Extract Archive"), menu);
+        connect(action, &QAction::triggered, this, [this, extractArchivePath, extractDestination] {
+            startArchiveExtraction(extractArchivePath, extractDestination);
+        });
+        menu->insertAction(menu->separator3(), action);
+    }
+
+    if (!compressPaths.isEmpty()) {
+        auto* action =
+            new QAction(QIcon::fromTheme(QStringLiteral("application-x-tar")), tr("Compress to Archive…"), menu);
+        connect(action, &QAction::triggered, this, [this, compressPaths] { startArchiveCompression(compressPaths); });
+        menu->insertAction(menu->separator3(), action);
     }
 }
 

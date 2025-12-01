@@ -58,6 +58,9 @@ class View : public Fm::FolderView {
    private:
     void launchFiles(Fm::FileInfoList files, bool inNewTabs = false);
     void openFolderAndSelectFile(const std::shared_ptr<const Fm::FileInfo>& fileInfo, bool inNewTab = false);
+    void startArchiveCompression(const QStringList& paths);
+    void startArchiveExtraction(const QString& archivePath, const QString& destinationDir);
+    static void removeLibfmArchiverActions(Fm::FileMenu* menu);
 };
 
 }  // namespace PCManFM

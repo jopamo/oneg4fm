@@ -22,6 +22,7 @@ list(APPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake")
 find_package(Qt6DBus ${QT_MINIMUM_VERSION} REQUIRED)
 find_package(Qt6LinguistTools ${QT_MINIMUM_VERSION} REQUIRED)
 find_package(Qt6Widgets ${QT_MINIMUM_VERSION} REQUIRED)
+find_package(Qt6Concurrent ${QT_MINIMUM_VERSION} REQUIRED)
 find_package(fm-qt6 ${LIBFMQT_MINIMUM_VERSION} REQUIRED)
 find_package(lxqt2-build-tools ${LXQTBT_MINIMUM_VERSION} REQUIRED)
 
@@ -29,6 +30,7 @@ find_package(lxqt2-build-tools ${LXQTBT_MINIMUM_VERSION} REQUIRED)
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(GIO REQUIRED gio-2.0)
 pkg_check_modules(BLAKE3 REQUIRED blake3)
+pkg_check_modules(LIBARCHIVE REQUIRED libarchive)
 
 message(STATUS "Building ${PROJECT_NAME} with Qt ${Qt6Core_VERSION}")
 

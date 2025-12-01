@@ -19,6 +19,7 @@
 #include <libfm-qt6/core/bookmarks.h>
 #include <libfm-qt6/core/fileinfojob.h>
 #include <libfm-qt6/core/folderconfig.h>
+#include <libfm-qt6/core/archiver.h>
 #include <libfm-qt6/core/terminal.h>
 #include <libfm-qt6/filepropsdialog.h>
 #include <libfm-qt6/filesearchdialog.h>
@@ -225,6 +226,8 @@ bool Application::parseCommandLineArgs() {
 
         // load global application configuration
         settings_.load(profileName_);
+        // Disable libfm-qt archiver integration; compression is handled in-process.
+        Fm::Archiver::setDefaultArchiver(nullptr);
 
         // initialize per-folder config backed by dir-settings.conf
         const QString perFolderConfigFile = settings_.profileDir(profileName_) + QStringLiteral("/dir-settings.conf");
