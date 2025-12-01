@@ -10,11 +10,12 @@
 
 #include "ifileops.h"
 #include "ifoldermodel.h"
-#include "iremotebackend.h"
-#include "itrashbackend.h"
-#include "ivolumebackend.h"
 
 namespace PCManFM {
+
+class ITrashBackend;
+class IVolumeBackend;
+class IRemoteBackend;
 
 class BackendRegistry {
    public:

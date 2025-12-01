@@ -20,7 +20,6 @@
 #ifndef PCMANFM_APPLICATION_H
 #define PCMANFM_APPLICATION_H
 
-#include <gio/gio.h>
 #include <libfm-qt6/core/fileinfo.h>
 #include <libfm-qt6/core/filepath.h>
 #include <libfm-qt6/editbookmarksdialog.h>
@@ -93,7 +92,6 @@ class Application : public QApplication {
 
     void onLastWindowClosed();
     void onSaveStateRequest(QSessionManager& manager);
-    void initVolumeManager();
 
     void onFindFileAccepted();
     void onConnectToServerAccepted();
@@ -101,9 +99,6 @@ class Application : public QApplication {
    protected:
     // virtual bool eventFilter(QObject* watched, QEvent* event);
     bool parseCommandLineArgs();
-    bool autoMountVolume(GVolume* volume, bool interactive = true);
-
-    static void onVolumeAdded(GVolumeMonitor* monitor, GVolume* volume, Application* pThis);
 
    private Q_SLOTS:
     void onPropJobFinished();
@@ -121,7 +116,6 @@ class Application : public QApplication {
     QPointer<Fm::EditBookmarksDialog> editBookmarksialog_;
     QTranslator translator;
     QTranslator qtTranslator;
-    GVolumeMonitor* volumeMonitor_;
 
     QFileSystemWatcher* userDirsWatcher_;
     QString userDirsFile_;

@@ -19,7 +19,6 @@ set(pcmanfm_SRCS
     launcher.cpp
     preferencesdialog.cpp
     xdgdir.cpp
-    autorundialog.cpp
     connectserverdialog.cpp
     settings.cpp
     bulkrename.cpp
@@ -31,9 +30,6 @@ set(pcmanfm_SRCS
     ../src/backends/qt/qt_fileops.cpp
     ../src/backends/qt/qt_fileinfo.cpp
     ../src/backends/qt/qt_foldermodel.cpp
-    ../src/backends/gio/gio_trashbackend.cpp
-    ../src/backends/gio/gio_volumebackend.cpp
-    ../src/backends/gio/gio_remotebackend.cpp
     ../src/ui/filepropertiesdialog.cpp
     ../src/core/ifoldermodel.h
 )
@@ -64,7 +60,6 @@ set(pcmanfm_UIS
     about.ui
     shortcuts.ui
     preferences.ui
-    autorun.ui
     connect.ui
     bulk-rename.ui
 )

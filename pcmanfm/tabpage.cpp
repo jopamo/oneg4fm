@@ -8,7 +8,6 @@
 #include <libfm-qt6/cachedfoldermodel.h>
 #include <libfm-qt6/core/fileinfo.h>
 #include <libfm-qt6/filemenu.h>
-#include <libfm-qt6/mountoperation.h>
 #include <libfm-qt6/proxyfoldermodel.h>
 #include <libfm-qt6/utilities.h>
 
@@ -517,25 +516,6 @@ void TabPage::onFolderFinishLoading() {
 }
 
 void TabPage::onFolderError(const Fm::GErrorPtr& err, Fm::Job::ErrorSeverity severity, Fm::Job::ErrorAction& response) {
-    if (err.domain() == G_IO_ERROR) {
-        if (err.code() == G_IO_ERROR_NOT_MOUNTED && severity < Fm::Job::ErrorSeverity::CRITICAL) {
-            auto& path = folder_->path();
-
-            // Workaround for GVFS admin backend bug
-            if (!path.hasUriScheme("admin")) {
-                MountOperation* op = new MountOperation(true, this);
-                op->mountEnclosingVolume(path);
-                if (op->wait()) {
-                    // blocking event loop, wait for mount operation to finish
-                    QApplication::restoreOverrideCursor();  // remove busy cursor
-                    overrideCursor_ = false;
-                    response = Fm::Job::ErrorAction::RETRY;
-                    return;
-                }
-            }
-        }
-    }
-
     // Only show more severe errors to the users and ignore milder errors.
     if (folder_ && severity >= Fm::Job::ErrorSeverity::MODERATE) {
         QMessageBox::critical(this, tr("Error"), err.message());
@@ -1009,18 +989,6 @@ void TabPage::goToCustomizedViewSource() {
 }
 
 bool TabPage::canOpenAdmin() {
-    const char* admin = "admin:///";
-    if (Fm::uriExists(admin)) {
-        return true;
-    }
-    MountOperation* op = new MountOperation(false, this);
-    op->mountEnclosingVolume(Fm::FilePath::fromUri(admin));
-    if (op->wait() && Fm::uriExists(admin)) {
-        return true;
-    }
-    if (folder_) {
-        QMessageBox::critical(parentWidget()->window(), QObject::tr("Error"), QObject::tr("Cannot open as Admin"));
-    }
     return false;
 }
 

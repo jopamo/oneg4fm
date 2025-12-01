@@ -15,9 +15,6 @@
 #include <unordered_map>
 #include <vector>
 
-// Glib/Gio Headers
-#include <gio/gio.h>
-
 // LibFM-Qt Headers
 #include <libfm-qt6/core/bookmarks.h>
 #include <libfm-qt6/core/fileinfojob.h>
@@ -25,7 +22,6 @@
 #include <libfm-qt6/core/terminal.h>
 #include <libfm-qt6/filepropsdialog.h>
 #include <libfm-qt6/filesearchdialog.h>
-#include <libfm-qt6/mountoperation.h>
 
 // Qt Headers
 #include <QApplication>
@@ -49,7 +45,6 @@
 // Local Headers
 #include "applicationadaptor.h"
 #include "applicationadaptorfreedesktopfilemanager.h"
-#include "autorundialog.h"
 #include "connectserverdialog.h"
 #include "launcher.h"
 #include "mainwindow.h"
@@ -109,7 +104,6 @@ Application::Application(int& argc, char** argv)
       daemonMode_(false),
       preferencesDialog_(),
       editBookmarksialog_(),
-      volumeMonitor_(nullptr),
       userDirsWatcher_(nullptr),
       openingLastTabs_(false) {
     argc_ = argc;
@@ -161,12 +155,7 @@ Application::Application(int& argc, char** argv)
     }
 }
 
-Application::~Application() {
-    if (volumeMonitor_) {
-        g_signal_handlers_disconnect_by_func(volumeMonitor_, gpointer(onVolumeAdded), this);
-        g_object_unref(volumeMonitor_);
-    }
-}
+Application::~Application() {}
 
 void Application::initWatch() {
     const QString configDir = QStandardPaths::writableLocation(QStandardPaths::ConfigLocation);
@@ -332,11 +321,6 @@ int Application::exec() {
         // keep running even when all windows are closed
         setQuitOnLastWindowClosed(false);
     }
-
-    volumeMonitor_ = g_volume_monitor_get();
-
-    // delay initialization to avoid treating initial async volume discovery as hotplug events
-    QTimer::singleShot(3000, this, &Application::initVolumeManager);
 
     return QCoreApplication::exec();
 }
@@ -699,61 +683,6 @@ void Application::editBookmarks() {
         editBookmarksialog_ = new Fm::EditBookmarksDialog(Fm::Bookmarks::globalInstance());
     }
     editBookmarksialog_.data()->show();
-}
-
-void Application::initVolumeManager() {
-    g_signal_connect(volumeMonitor_, "volume-added", G_CALLBACK(onVolumeAdded), this);
-
-    if (settings_.mountOnStartup()) {
-        // try to automount all volumes that request automounting
-        GList* vols = g_volume_monitor_get_volumes(volumeMonitor_);
-        for (GList* l = vols; l; l = l->next) {
-            GVolume* volume = G_VOLUME(l->data);
-            if (g_volume_should_automount(volume)) {
-                autoMountVolume(volume, false);
-            }
-            g_object_unref(volume);
-        }
-        g_list_free(vols);
-    }
-}
-
-bool Application::autoMountVolume(GVolume* volume, bool interactive) {
-    if (!g_volume_should_automount(volume) || !g_volume_can_mount(volume)) {
-        return false;
-    }
-
-    GMount* mount = g_volume_get_mount(volume);
-    if (!mount) {
-        // not mounted, perform an automount
-        auto* op = new Fm::MountOperation(interactive);
-        op->mount(volume);
-        if (!op->wait()) {
-            return false;
-        }
-        if (!interactive) {
-            return true;
-        }
-        mount = g_volume_get_mount(volume);
-    }
-
-    if (mount) {
-        if (interactive && settings_.autoRun()) {
-            // removable media may request an autorun dialog
-            auto* dlg = new AutoRunDialog(volume, mount);
-            dlg->show();
-        }
-        g_object_unref(mount);
-    }
-
-    return true;
-}
-
-// static
-void Application::onVolumeAdded(GVolumeMonitor* /*monitor*/, GVolume* volume, Application* pThis) {
-    if (pThis->settings_.mountRemovable()) {
-        pThis->autoMountVolume(volume, true);
-    }
 }
 
 void Application::installSigtermHandler() {
