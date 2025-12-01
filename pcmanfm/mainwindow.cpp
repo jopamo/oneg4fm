@@ -122,15 +122,6 @@ MainWindow::MainWindow(Fm::FilePath path)
 
     setWindowTitle(QStringLiteral("PCManFM-Qt"));
 
-    // Explicit connections for menu actions (fallback if automatic connections fail)
-    connect(ui.actionNewTab, &QAction::triggered, this, &MainWindow::on_actionNewTab_triggered);
-    connect(ui.actionNewWin, &QAction::triggered, this, &MainWindow::on_actionNewWin_triggered);
-    connect(ui.actionNewFolder, &QAction::triggered, this, &MainWindow::on_actionNewFolder_triggered);
-    connect(ui.actionIconView, &QAction::triggered, this, &MainWindow::on_actionIconView_triggered);
-    connect(ui.actionCompactView, &QAction::triggered, this, &MainWindow::on_actionCompactView_triggered);
-    connect(ui.actionDetailedList, &QAction::triggered, this, &MainWindow::on_actionDetailedList_triggered);
-    connect(ui.actionThumbnailView, &QAction::triggered, this, &MainWindow::on_actionThumbnailView_triggered);
-
     lastActive_ = this;
 }
 
