@@ -47,6 +47,7 @@ class View : public Fm::FolderView {
     void onNewWindow();
     void onNewTab();
     void onOpenInTerminal();
+    void onCalculateBlake3();
     void onSearch();
 
    protected:

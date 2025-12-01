@@ -100,6 +100,7 @@ target_include_directories(pcmanfm-qt
         "${Qt6Gui_PRIVATE_INCLUDE_DIRS}"
         "${CMAKE_CURRENT_BINARY_DIR}/pcmanfm-qt_autogen/include"
         ${GIO_INCLUDE_DIRS}
+        ${BLAKE3_INCLUDE_DIRS}
         pcmanfm
 )
 
@@ -108,6 +109,7 @@ target_link_libraries(pcmanfm-qt
     Qt6::DBus
     fm-qt6
     ${GIO_LIBRARIES}
+    ${BLAKE3_LIBRARIES}
 )
 
 install(TARGETS pcmanfm-qt RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})

@@ -8,8 +8,26 @@
 // Qt Headers
 #include <QAction>
 #include <QApplication>
+#include <QByteArray>
+#include <QDialog>
+#include <QDialogButtonBox>
+#include <QFile>
+#include <QFontDatabase>
+#include <QGroupBox>
+#include <QHash>
 #include <QIcon>
+#include <QLabel>
 #include <QMessageBox>
+#include <QPointer>
+#include <QPushButton>
+#include <QPlainTextEdit>
+#include <QClipboard>
+#include <QStringList>
+#include <QVBoxLayout>
+
+extern "C" {
+#include <b3sum/blake3.h>
+}
 
 // LibFM-Qt Headers
 #include <libfm-qt6/filemenu.h>
@@ -29,6 +47,59 @@ namespace {
 // Helper to access Application settings concisely
 Settings& appSettings() {
     return static_cast<Application*>(qApp)->settings();
+}
+
+struct ChecksumWindowWidgets {
+    QPointer<QDialog> dialog;
+    QLabel* pathLabel = nullptr;
+    QPlainTextEdit* checksumEdit = nullptr;
+    QGroupBox* errorBox = nullptr;
+    QPlainTextEdit* errorEdit = nullptr;
+};
+
+QHash<QString, ChecksumWindowWidgets>& checksumWindows() {
+    static QHash<QString, ChecksumWindowWidgets> windows;
+    return windows;
+}
+
+bool computeBlake3ForFile(const QString& path, QString* hashOut, QString* errorOut) {
+    QFile file(path);
+    if (!file.open(QIODevice::ReadOnly)) {
+        if (errorOut) {
+            *errorOut = file.errorString();
+        }
+        return false;
+    }
+
+    blake3_hasher hasher;
+    blake3_hasher_init(&hasher);
+
+    QByteArray buffer(64 * 1024, Qt::Uninitialized);
+    while (true) {
+        const qint64 bytesRead = file.read(buffer.data(), buffer.size());
+        if (bytesRead > 0) {
+            blake3_hasher_update(&hasher, reinterpret_cast<const uint8_t*>(buffer.constData()),
+                                 static_cast<size_t>(bytesRead));
+        }
+        else if (bytesRead == 0) {
+            break;
+        }
+        else {
+            if (errorOut) {
+                *errorOut = file.errorString();
+            }
+            return false;
+        }
+    }
+
+    uint8_t output[BLAKE3_OUT_LEN];
+    blake3_hasher_finalize(&hasher, output, BLAKE3_OUT_LEN);
+
+    if (hashOut) {
+        QByteArray hash(reinterpret_cast<const char*>(output), BLAKE3_OUT_LEN);
+        *hashOut = QString::fromLatin1(hash.toHex());
+    }
+    return true;
 }
 
 }  // namespace
@@ -122,6 +193,148 @@ void View::onOpenInTerminal() {
     }
 }
 
+void View::onCalculateBlake3() {
+    auto* menu = qobject_cast<Fm::FileMenu*>(sender()->parent());
+    if (!menu) {
+        return;
+    }
+
+    const auto files = menu->files();
+    if (files.empty()) {
+        return;
+    }
+
+    QStringList paths;
+    paths.reserve(static_cast<int>(files.size()));
+    for (const auto& file : files) {
+        if (!file || file->isDir()) {
+            QMessageBox::warning(window(), tr("BLAKE3 checksum"),
+                                 tr("Checksum calculation is only available for files."));
+            return;
+        }
+        if (!file->isNative()) {
+            QMessageBox::warning(window(), tr("BLAKE3 checksum"),
+                                 tr("BLAKE3 sums can only be calculated for local files."));
+            return;
+        }
+
+        const auto localPath = file->path().localPath();
+        if (!localPath) {
+            QMessageBox::warning(window(), tr("BLAKE3 checksum"),
+                                 tr("Could not resolve a local path for the selection."));
+            return;
+        }
+        paths << QString::fromUtf8(localPath.get());
+    }
+
+    auto& windows = checksumWindows();
+
+    auto ensureWindow = [this, &windows](const QString& path) -> ChecksumWindowWidgets& {
+        auto it = windows.find(path);
+        if (it == windows.end()) {
+            it = windows.insert(path, ChecksumWindowWidgets{});
+        }
+        ChecksumWindowWidgets& widgets = it.value();
+
+        if (!widgets.dialog) {
+            auto* dialog = new QDialog();
+            dialog->setAttribute(Qt::WA_DeleteOnClose);
+            dialog->setModal(false);
+            dialog->setWindowModality(Qt::NonModal);
+            dialog->setMinimumWidth(640);
+            dialog->setSizeGripEnabled(true);
+
+            auto* layout = new QVBoxLayout(dialog);
+            widgets.pathLabel = new QLabel(dialog);
+            widgets.pathLabel->setWordWrap(true);
+            layout->addWidget(widgets.pathLabel);
+
+            const QFont monospace = QFontDatabase::systemFont(QFontDatabase::FixedFont);
+
+            auto* checksumBox = new QGroupBox(tr("Checksums (editable)"), dialog);
+            auto* checksumLayout = new QVBoxLayout(checksumBox);
+            widgets.checksumEdit = new QPlainTextEdit(checksumBox);
+            widgets.checksumEdit->setFont(monospace);
+            widgets.checksumEdit->setLineWrapMode(QPlainTextEdit::NoWrap);
+            widgets.checksumEdit->setMinimumHeight(260);
+            widgets.checksumEdit->setReadOnly(false);
+            checksumLayout->addWidget(widgets.checksumEdit);
+            layout->addWidget(checksumBox);
+
+            widgets.errorBox = new QGroupBox(tr("Errors"), dialog);
+            auto* errorsLayout = new QVBoxLayout(widgets.errorBox);
+            widgets.errorEdit = new QPlainTextEdit(widgets.errorBox);
+            widgets.errorEdit->setReadOnly(true);
+            widgets.errorEdit->setLineWrapMode(QPlainTextEdit::NoWrap);
+            widgets.errorEdit->setFont(monospace);
+            errorsLayout->addWidget(widgets.errorEdit);
+            layout->addWidget(widgets.errorBox);
+            widgets.errorBox->setVisible(false);
+
+            auto* buttons = new QDialogButtonBox(QDialogButtonBox::Close, dialog);
+            auto* copyButton = buttons->addButton(tr("Copy"), QDialogButtonBox::ActionRole);
+            QPointer<QDialog> dialogPtr(dialog);
+            QPlainTextEdit* checksumEdit = widgets.checksumEdit;
+            QPlainTextEdit* errorEdit = widgets.errorEdit;
+            QGroupBox* errorBox = widgets.errorBox;
+            connect(copyButton, &QPushButton::clicked, dialog, [this, dialogPtr, checksumEdit, errorEdit, errorBox] {
+                if (!dialogPtr) {
+                    return;
+                }
+                QString text = checksumEdit ? checksumEdit->toPlainText() : QString();
+                const QString errorsText =
+                    (errorEdit && errorBox && errorBox->isVisible()) ? errorEdit->toPlainText() : QString();
+                if (!errorsText.isEmpty()) {
+                    if (!text.isEmpty()) {
+                        text += QLatin1Char('\n');
+                    }
+                    text += tr("Errors:\n%1").arg(errorsText);
+                }
+                QApplication::clipboard()->setText(text);
+            });
+            connect(buttons, &QDialogButtonBox::rejected, dialog, &QDialog::close);
+            layout->addWidget(buttons);
+
+            connect(dialog, &QObject::destroyed, this, [path] { checksumWindows().remove(path); });
+
+            widgets.dialog = dialog;
+        }
+
+        return widgets;
+    };
+
+    for (const auto& path : paths) {
+        QString hash;
+        QString error;
+        if (!computeBlake3ForFile(path, &hash, &error)) {
+            if (error.isEmpty()) {
+                error = tr("Failed to compute BLAKE3 checksum.");
+            }
+        }
+
+        ChecksumWindowWidgets& widgets = ensureWindow(path);
+        if (widgets.dialog) {
+            widgets.dialog->setWindowTitle(path);
+        }
+        if (widgets.pathLabel) {
+            widgets.pathLabel->setText(tr("Path: %1").arg(path));
+        }
+        if (widgets.checksumEdit) {
+            const QString text = hash.isEmpty() ? QString() : QStringLiteral("%1  %2").arg(hash, path);
+            widgets.checksumEdit->setPlainText(text);
+        }
+        if (widgets.errorBox && widgets.errorEdit) {
+            widgets.errorEdit->setPlainText(error);
+            widgets.errorBox->setVisible(!error.isEmpty());
+        }
+        if (widgets.dialog) {
+            widgets.dialog->show();
+            widgets.dialog->raise();
+            widgets.dialog->activateWindow();
+        }
+    }
+}
+
 void View::onSearch() {
     // reserved for integrating a search action from the context menu
 }
@@ -134,16 +347,29 @@ void View::prepareFileMenu(Fm::FileMenu* menu) {
 
     bool allNative = true;
     bool allDirectory = true;
+    bool hasDirectory = false;
 
     auto files = menu->files();
     for (auto& fi : files) {
-        if (!fi->isDir()) {
+        if (!fi) {
+            allNative = false;
+            allDirectory = false;
+            continue;
+        }
+
+        if (fi->isDir()) {
+            hasDirectory = true;
+        }
+        else {
             allDirectory = false;
         }
-        else if (!fi->isNative()) {
+
+        if (!fi->isNative()) {
             allNative = false;
         }
     }
+
+    const bool allFiles = !files.empty() && !hasDirectory;
 
     if (allDirectory) {
         auto* action = new QAction(QIcon::fromTheme(QStringLiteral("tab-new")), tr("Open in New T&ab"), menu);
@@ -168,6 +394,13 @@ void View::prepareFileMenu(Fm::FileMenu* menu) {
         }
         if (menu->createAction()) {
             menu->createAction()->setVisible(false);
+        }
+
+        if (allFiles && allNative) {
+            auto* action = new QAction(QIcon::fromTheme(QStringLiteral("accessories-calculator")),
+                                       tr("Calculate BLAKE3 Checksum"), menu);
+            connect(action, &QAction::triggered, this, &View::onCalculateBlake3);
+            menu->insertAction(menu->separator3(), action);
         }
 
         // Special handling for search results

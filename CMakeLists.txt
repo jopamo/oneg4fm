@@ -28,6 +28,7 @@ find_package(lxqt2-build-tools ${LXQTBT_MINIMUM_VERSION} REQUIRED)
 # GIO for trash backend
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(GIO REQUIRED gio-2.0)
+pkg_check_modules(BLAKE3 REQUIRED blake3)
 
 message(STATUS "Building ${PROJECT_NAME} with Qt ${Qt6Core_VERSION}")
 
