@@ -203,6 +203,9 @@ void HexEditorWindow::setupUi() {
     connect(nextDiffAction_, &QAction::triggered, this, [this] { nextDiff(true); });
     prevDiffAction_ = toolbar->addAction(QIcon::fromTheme(QStringLiteral("go-up")), tr("Prev Diff"));
     connect(prevDiffAction_, &QAction::triggered, this, [this] { nextDiff(false); });
+    diffSideBySideAction_ =
+        toolbar->addAction(QIcon::fromTheme(QStringLiteral("view-split-left-right")), tr("Side-by-Side Diff…"));
+    connect(diffSideBySideAction_, &QAction::triggered, this, &HexEditorWindow::sideBySideDiff);
 
     insertToggleAction_ = toolbar->addAction(QIcon::fromTheme(QStringLiteral("insert-text")), tr("Insert mode"));
     insertToggleAction_->setCheckable(true);
@@ -391,6 +394,9 @@ void HexEditorWindow::updateActionStates(bool hasSelection) {
     }
     if (prevDiffAction_) {
         prevDiffAction_->setEnabled(hasDiffs);
+    }
+    if (diffSideBySideAction_) {
+        diffSideBySideAction_->setEnabled(hasDoc);
     }
 }
 
@@ -989,6 +995,93 @@ void HexEditorWindow::diffWithFile() {
         nextDiff(true);
     }
     updateActionStates(view_ && view_->selection().has_value());
+}
+
+void HexEditorWindow::sideBySideDiff() {
+    if (!doc_) {
+        return;
+    }
+    const QString otherPath = QFileDialog::getOpenFileName(this, tr("Select file to diff"),
+                                                           doc_->path().isEmpty() ? QString() : doc_->path());
+    if (otherPath.isEmpty()) {
+        return;
+    }
+
+    QFile other(otherPath);
+    if (!other.open(QIODevice::ReadOnly)) {
+        QMessageBox::warning(this, tr("Diff"), tr("Cannot open %1").arg(otherPath));
+        return;
+    }
+
+    const std::uint64_t len = doc_->size();
+    const std::uint64_t otherLen = static_cast<std::uint64_t>(other.size());
+    const std::uint64_t maxLen = std::max<std::uint64_t>(len, otherLen);
+    constexpr int kRowBytes = 16;
+
+    auto formatLine = [&](std::uint64_t offsetVal, const QByteArray& data, const QByteArray& otherData) -> QString {
+        QString line = QStringLiteral("0x%1 ").arg(offsetVal, 8, 16, QLatin1Char('0')).toUpper();
+        QString ascii;
+        for (int i = 0; i < kRowBytes; ++i) {
+            const bool hasLeft = i < data.size();
+            const bool hasRight = i < otherData.size();
+            const unsigned char l = hasLeft ? static_cast<unsigned char>(data.at(i)) : 0;
+            const unsigned char r = hasRight ? static_cast<unsigned char>(otherData.at(i)) : 0;
+            const bool diff = (!hasLeft && hasRight) || (!hasRight && hasLeft) || (l != r);
+            if (diff) {
+                line += QStringLiteral("!%1").arg(
+                    hasLeft ? QString::number(l, 16).rightJustified(2, QLatin1Char('0')).toUpper()
+                            : QStringLiteral("--"));
+            }
+            else {
+                line += QStringLiteral(" %1").arg(QString::number(l, 16).rightJustified(2, QLatin1Char('0')).toUpper());
+            }
+            if ((i % 4) == 3) {
+                line += QLatin1Char(' ');
+            }
+            const char c = hasLeft ? static_cast<char>(l) : ' ';
+            ascii +=
+                (std::isprint(static_cast<unsigned char>(c)) ? QString(QChar::fromLatin1(c)) : QStringLiteral("."));
+        }
+        line = line.leftJustified(3 * kRowBytes + 10, QLatin1Char(' '));
+        line += QStringLiteral("| %1").arg(ascii);
+        return line;
+    };
+
+    QStringList leftLines;
+    QStringList rightLines;
+    std::uint64_t offset = 0;
+    while (offset < maxLen) {
+        const std::uint64_t toRead = std::min<std::uint64_t>(static_cast<std::uint64_t>(kRowBytes), maxLen - offset);
+        QString err;
+        QByteArray left;
+        if (!doc_->readBytes(offset, toRead, left, err)) {
+            QMessageBox::warning(this, tr("Diff"), err);
+            return;
+        }
+        QByteArray right = other.read(static_cast<qint64>(toRead));
+        leftLines << formatLine(offset, left, right);
+        rightLines << formatLine(offset, right, left);
+        offset += toRead;
+    }
+
+    auto* dialog = new QDialog(this);
+    dialog->setWindowTitle(tr("Side-by-side diff vs %1").arg(QFileInfo(otherPath).fileName()));
+    auto* layout = new QHBoxLayout(dialog);
+    auto makePane = [&](const QString& title, const QStringList& lines) {
+        auto* pane = new QPlainTextEdit(dialog);
+        pane->setReadOnly(true);
+        pane->setFont(QFontDatabase::systemFont(QFontDatabase::FixedFont));
+        pane->setPlainText(lines.join(QStringLiteral("\n")));
+        pane->setMinimumWidth(400);
+        pane->setLineWrapMode(QPlainTextEdit::NoWrap);
+        pane->setProperty("paneTitle", title);
+        return pane;
+    };
+    layout->addWidget(makePane(tr("Current"), leftLines));
+    layout->addWidget(makePane(tr("Other"), rightLines));
+    dialog->setLayout(layout);
+    dialog->resize(900, 600);
+    dialog->show();
 }
 
 void HexEditorWindow::nextDiff(bool forward) {

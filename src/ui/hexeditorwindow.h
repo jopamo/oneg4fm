@@ -59,6 +59,7 @@ class HexEditorWindow : public QMainWindow {
     void jumpBookmark(bool forward);
     void diffWithFile();
     void nextDiff(bool forward);
+    void sideBySideDiff();
 
     std::unique_ptr<HexDocument> doc_;
     QPointer<HexEditorView> view_;
@@ -93,6 +94,7 @@ class HexEditorWindow : public QMainWindow {
     QAction* diffAction_ = nullptr;
     QAction* nextDiffAction_ = nullptr;
     QAction* prevDiffAction_ = nullptr;
+    QAction* diffSideBySideAction_ = nullptr;
 
     QByteArray lastSearch_;
     QByteArray lastReplace_;
