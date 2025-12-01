@@ -3,23 +3,64 @@ cmake_minimum_required(VERSION 3.18)
 # Find Qt6 Test components
 find_package(Qt6 REQUIRED COMPONENTS Test)
 
-# Create test executable
-add_executable(pcmanfm-qt-tests
+# Basic sanity tests
+add_executable(pcmanfm-qt-basic-tests
     test_basic.cpp
 )
 
-# Link with Qt Test
-target_link_libraries(pcmanfm-qt-tests
+target_link_libraries(pcmanfm-qt-basic-tests
     Qt6::Test
     Qt6::Core
     Qt6::Gui
     Qt6::Widgets
 )
 
-# Include directories
-target_include_directories(pcmanfm-qt-tests PRIVATE
+target_include_directories(pcmanfm-qt-basic-tests PRIVATE
     ${CMAKE_SOURCE_DIR}/pcmanfm
 )
 
-# Add test
-add_test(NAME pcmanfm-qt-tests COMMAND pcmanfm-qt-tests)
+add_test(NAME pcmanfm-qt-basic-tests COMMAND pcmanfm-qt-basic-tests)
+set_tests_properties(pcmanfm-qt-basic-tests PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
+
+# POSIX filesystem core tests
+add_executable(pcmanfm-qt-fs-tests
+    fs_ops_test.cpp
+    ../src/core/fs_ops.cpp
+)
+
+target_link_libraries(pcmanfm-qt-fs-tests
+    Qt6::Test
+    Qt6::Core
+    Qt6::Gui
+    Qt6::Widgets
+)
+
+target_include_directories(pcmanfm-qt-fs-tests PRIVATE
+    ${CMAKE_SOURCE_DIR}/pcmanfm
+)
+
+add_test(NAME pcmanfm-qt-fs-tests COMMAND pcmanfm-qt-fs-tests)
+set_tests_properties(pcmanfm-qt-fs-tests PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
+
+# Qt adapter (QtFileOps) tests
+add_executable(pcmanfm-qt-ops-tests
+    qt_fileops_test.cpp
+    ../src/backends/qt/qt_fileops.cpp
+    ../src/core/ifileops.cpp
+    ../src/core/fs_ops.cpp
+)
+
+target_link_libraries(pcmanfm-qt-ops-tests
+    Qt6::Test
+    Qt6::Core
+    Qt6::Gui
+    Qt6::Widgets
+)
+
+target_include_directories(pcmanfm-qt-ops-tests PRIVATE
+    ${CMAKE_SOURCE_DIR}/src
+    ${CMAKE_SOURCE_DIR}/pcmanfm
+)
+
+add_test(NAME pcmanfm-qt-ops-tests COMMAND pcmanfm-qt-ops-tests)
+set_tests_properties(pcmanfm-qt-ops-tests PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen")

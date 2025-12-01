@@ -10,6 +10,7 @@ This fork is:
 * Linux only
 * Desktop-only (no “desktop” window, no Wayland shell integration yet)
 * In active transition away from libfm/libfm-qt
+* File I/O is being split into a POSIX-only core with Qt adapters at the edges
 
 ## 2. Modernization Goals
 
@@ -32,6 +33,7 @@ Concretely:
   * optional remote filesystems (sftp, smb, dav, etc)
 * **No libfm / libfm-qt anywhere in the build**
 * **Backends are swappable** behind narrow interfaces in `src/core/`
+* **Filesystem layering:** real file mutations happen in a POSIX-only core; Qt handles UI, metadata, and path conversion only
 
 > Keep this document live. Every time architecture or backend decisions change, update this guide and sync the current TODO list so contributors can act on it. Treat `HACKING.md` + `TODO.md` as working documents, not snapshots.
 
@@ -230,9 +232,24 @@ public:
 
 UI code never instantiates backend classes directly; it always goes through `BackendRegistry`.
 
+### 3.3 Filesystem layering (POSIX core + Qt adapters)
+
+* Introduce a POSIX-only filesystem core (paths are native bytes, explicit `Error` results, atomic writes with fsync, chmod/mkdir/rename/remove helpers).
+* `backends/qt/qt_fileops.*` becomes the adapter: convert `QString` paths with `QFile::encodeName`, call the POSIX core, and emit Qt signals. Qt stays out of the core headers.
+* UI code uses `IFileOps`/`BackendRegistry` for real mutations. Direct `QFile`/`QDir` writes in UI code should move behind the core, while UI-only discovery/metadata (`QDir::entryList()`, `QFileInfo` for icons/labels) can remain Qt.
+* Config/state writes (e.g., `user-dirs.dirs`, settings files) should prefer the POSIX core helpers (`write_file_atomic`, `make_dir_parents`, etc.) to get fsync and atomic rename guarantees. A small Qt adapter (`FsQt`) converts `QString` paths to native bytes for these synchronous calls.
+
 ## 4. Backend Implementations
 
-### 4.1 Qt backend
+### 4.1 POSIX filesystem core
+
+This lives in the core layer (no Qt includes) and provides the primitives that backends call.
+
+* Paths are byte strings; no encoding assumptions.
+* Functions cover `read_file_all`, `write_file_atomic` (temp file + fsync + rename), `remove`, `rename`, `make_dir_parents`, and `set_permissions`.
+* Returns explicit error structs (errno + message) instead of Qt exceptions or silent failures.
+
+### 4.2 Qt backend
 
 **QtFileInfo**
 
@@ -249,11 +266,11 @@ UI code never instantiates backend classes directly; it always goes through `Bac
 **QtFileOps**
 
 * Uses worker thread(s) to keep UI responsive
-* Uses `QFile`, `QDir`, `QSaveFile`, etc for copy, move, delete
+* Converts paths (`QFile::encodeName`) and delegates copy/move/delete/rename/mkdir/permissions to the POSIX core
 * Emits `FileOpProgress` and `finished` signals
 * Supports cancellation via an atomic flag checked inside the worker
 
-### 4.2 GIO backend
+### 4.3 GIO backend
 
 These are intentionally small and self-contained.
 
@@ -279,11 +296,12 @@ These are intentionally small and self-contained.
 
 ### 5.1 High-level steps
 
-1. Add the interfaces in `src/core/` and Qt backend implementations in `src/backends/qt/`
-2. Change UI code in `src/ui/` to talk to `IFileInfo`, `IFolderModel`, `IFileOps`, etc instead of libfm-qt types
-3. Provide a Qt-only configuration (`BackendRegistry::initDefaults()` with only Qt backends) so local file management works without libfm
-4. Add `GioTrashBackend`, `GioVolumeBackend`, and optionally `GioRemoteBackend`
-5. Remove libfm/libfm-qt includes, linkage, and build options
+1. Add a POSIX-only filesystem core (native-byte paths, explicit errors) with `read_file_all`, `write_file_atomic`, `remove`, `rename`, `make_dir_parents`, and `set_permissions`.
+2. Rewrite `backends/qt/qt_fileops.*` to be the thin Qt adapter to that core (Qt for path conversion + signals only).
+3. Change UI code in `src/ui/` and `pcmanfm/` to talk to `IFileOps` and the core for real mutations (copy/move/delete/rename/mkdir/permissions/config writes). Keep UI-only metadata and listing in Qt.
+4. Provide a Qt-only configuration (`BackendRegistry::initDefaults()` with only Qt backends) so local file management works without libfm.
+5. Add `GioTrashBackend`, `GioVolumeBackend`, and optionally `GioRemoteBackend`.
+6. Remove libfm/libfm-qt includes, linkage, and build options.
 
 ### 5.2 Example usage in UI code
 
@@ -349,7 +367,7 @@ cmake --build build -j"$(nproc)"
 
 # run all unit tests
 cd build
-ctest --output-on-failure
+ctest --output-on-failure  # set QT_QPA_PLATFORM=offscreen if you have no display/server
 ```
 
 if you want to rerun only tests after code changes
@@ -357,13 +375,13 @@ if you want to rerun only tests after code changes
 ```bash
 cd "$HOME/projects/pcmanfm-qt/build"
 cmake --build . -j"$(nproc)"
-ctest --output-on-failure
+ctest --output-on-failure  # set QT_QPA_PLATFORM=offscreen if you have no display/server
 ```
 
 and to run a single test by name (example)
 
 ```bash
-ctest -R pcmanfmqt_some_component_test --output-on-failure
+QT_QPA_PLATFORM=offscreen ctest -R pcmanfmqt_some_component_test --output-on-failure
 ```
 
 Run from build tree:
@@ -392,11 +410,20 @@ Run from build tree:
 
 When touching old code that still references libfm/libfm-qt:
 
-* Replace `libfm` file operations with `QFile`, `QDir`, `QSaveFile`, and `IFileOps`
-* Replace `libfm` metadata usage with `QFileInfo` and `QMimeDatabase`
-* Replace `libfm` MIME handling with Qt’s MIME APIs
-* Move any new behavior into the Qt or GIO backends instead of direct usage in `ui/`
+* Replace libfm operations with `IFileOps` that delegates to the POSIX core (no new direct `QFile`/`QDir` mutations in UI code)
+* Keep Qt metadata helpers (`QFileInfo`, `QMimeDatabase`, icons) for UI/display only
+* Move new behavior into the Qt or GIO backends, backed by the POSIX core, instead of direct usage in `ui/`
 * Keep platform assumptions Linux-only (no Windows or legacy Unix shims)
+
+### 7.4 POSIX core hardening (work in progress)
+
+The POSIX filesystem core currently supports regular files/dirs with atomic write + recursive copy/move/delete. Hardening tasks to track:
+
+* Switch recursive operations to dir-FD based `openat`/`unlinkat`/`fstatat`/`mkdirat` to reduce TOCTOU/symlink races.
+* Define and implement a symlink policy (copy link vs follow vs reject), detect loops, and optionally enforce max depth/device boundaries.
+* Preserve more metadata when desired (uid/gid, mtime/atime, xattrs/ACLs) instead of only mode bits.
+* Consider rollback/cleanup strategy on partial failures/cancellations during recursive copy/move.
+* Decide how to handle special files (FIFOs, sockets, device nodes) — reject with clear errors or support selectively.
 
 ## 8. File Organization
 

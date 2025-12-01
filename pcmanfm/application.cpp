@@ -50,6 +50,7 @@
 #include "mainwindow.h"
 #include "preferencesdialog.h"
 #include "xdgdir.h"
+#include "../src/ui/fsqt.h"
 
 namespace PCManFM {
 
@@ -159,14 +160,15 @@ Application::~Application() {}
 
 void Application::initWatch() {
     const QString configDir = QStandardPaths::writableLocation(QStandardPaths::ConfigLocation);
-    QFile file(configDir + QStringLiteral("/user-dirs.dirs"));
-
-    if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
-        qDebug() << Q_FUNC_INFO << "Could not read:" << file.fileName();
-        userDirsFile_.clear();
+    const QString filePath = configDir + QStringLiteral("/user-dirs.dirs");
+    QByteArray data;
+    QString error;
+    if (PCManFM::FsQt::readFile(filePath, data, error)) {
+        userDirsFile_ = filePath;
     }
     else {
-        userDirsFile_ = file.fileName();
+        qDebug() << Q_FUNC_INFO << "Could not read:" << filePath << error;
+        userDirsFile_.clear();
     }
 
     userDirsWatcher_ = new QFileSystemWatcher(this);

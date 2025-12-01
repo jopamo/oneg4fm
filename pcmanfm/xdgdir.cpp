@@ -6,18 +6,18 @@
 #include "xdgdir.h"
 
 #include <QDir>
-#include <QFile>
 #include <QRegularExpression>
-#include <QSaveFile>
 #include <QStandardPaths>
+#include "../src/ui/fsqt.h"
 
 static const QRegularExpression desktopRegex(QStringLiteral("XDG_DESKTOP_DIR=\"([^\n]*)\""));
 
 QString XdgDir::readUserDirsFile() {
-    QFile file(QStandardPaths::writableLocation(QStandardPaths::ConfigLocation) + QStringLiteral("/user-dirs.dirs"));
-    if (file.open(QIODevice::ReadOnly | QIODevice::Text)) {
-        QByteArray data = file.readAll();
-        file.close();
+    QByteArray data;
+    QString error;
+    const QString path =
+        QStandardPaths::writableLocation(QStandardPaths::ConfigLocation) + QStringLiteral("/user-dirs.dirs");
+    if (PCManFM::FsQt::readFile(path, data, error)) {
         return QString::fromLocal8Bit(data);
     }
     return QString();
@@ -55,11 +55,8 @@ void XdgDir::setDesktopDir(QString path) {
         str += line + QLatin1Char('\n');
     }
     QString dir = QStandardPaths::writableLocation(QStandardPaths::ConfigLocation);
-    if (QDir().mkpath(dir)) {  // write the file
-        QSaveFile file(dir + QStringLiteral("/user-dirs.dirs"));
-        if (file.open(QIODevice::WriteOnly | QIODevice::Text)) {
-            file.write(str.toLocal8Bit());
-            file.commit();
-        }
+    QString error;
+    if (PCManFM::FsQt::makeDirParents(dir, error)) {
+        PCManFM::FsQt::writeFileAtomic(dir + QStringLiteral("/user-dirs.dirs"), str.toLocal8Bit(), error);
     }
 }

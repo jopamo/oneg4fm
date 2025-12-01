@@ -27,6 +27,7 @@
 #include <QStyle>
 #include <QTimer>
 #include <QToolButton>
+#include "../src/ui/fsqt.h"
 
 // LibFM-Qt Headers
 #include <libfm-qt6/browsehistory.h>
@@ -253,15 +254,11 @@ void MainWindow::on_actionNewBlankFile_triggered() {
         QDir dir(dirPath);
 
         QString filePath = dir.filePath(name);
-        QFile file(filePath);
-
-        if (!file.open(QIODevice::WriteOnly | QIODevice::NewOnly)) {
-            QMessageBox::warning(this, tr("Error"),
-                                 tr("Failed to create file \"%1\": %2").arg(name, file.errorString()));
+        QString error;
+        if (!FsQt::writeFileAtomic(filePath, QByteArray(), error)) {
+            QMessageBox::warning(this, tr("Error"), tr("Failed to create file \"%1\": %2").arg(name, error));
             return;
         }
-
-        file.close();
     }
 }
 
@@ -280,22 +277,22 @@ void MainWindow::on_actionCreateLauncher_triggered() {
             // Correctly convert Fm::FilePath to a local file path string
             QString currentDirPath = QString::fromUtf8(page->path().localPath().get());
             QString filePath = currentDirPath + QStringLiteral("/") + name + QStringLiteral(".desktop");
-            QFile file(filePath);
-            if (file.open(QIODevice::WriteOnly | QIODevice::Text)) {
-                QTextStream out(&file);
-                out << "[Desktop Entry]\n";
-                out << "Version=1.0\n";
-                out << "Type=Application\n";
-                out << "Name=" << name << "\n";
-                out << "Exec=" << command << "\n";
-                out << "Terminal=false\n";  // Assume graphical application by default
-                file.close();
+            QString error;
+            QString content = QStringLiteral(
+                                  "[Desktop Entry]\n"
+                                  "Version=1.0\n"
+                                  "Type=Application\n"
+                                  "Name=%1\n"
+                                  "Exec=%2\n"
+                                  "Terminal=false\n")
+                                  .arg(name, command);
+            if (FsQt::writeFileAtomic(filePath, content.toUtf8(), error)) {
                 QMessageBox::information(this, tr("Launcher Created"),
                                          tr("Launcher '%1.desktop' created successfully.").arg(name));
             }
             else {
                 QMessageBox::warning(this, tr("Create Launcher Failed"),
-                                     tr("Failed to create launcher file '%1': %2").arg(name, file.errorString()));
+                                     tr("Failed to create launcher file '%1': %2").arg(name, error));
             }
         }
     }

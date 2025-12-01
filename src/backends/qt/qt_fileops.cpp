@@ -5,14 +5,44 @@
 
 #include "qt_fileops.h"
 
+#include "../../core/fs_ops.h"
+
 #include <QCoreApplication>
-#include <QDebug>
-#include <QDir>
+#include <QFile>
 #include <QFileInfo>
-#include <QSaveFile>
+#include <QObject>
+#include <QThread>
+
 #include <atomic>
+#include <functional>
+#include <sys/stat.h>
+#include <cerrno>
+#include <cstring>
 
 namespace PCManFM {
+
+namespace {
+
+std::string toNativePath(const QString& path) {
+    const QByteArray bytes = QFile::encodeName(path);
+    return std::string(bytes.constData(), static_cast<std::size_t>(bytes.size()));
+}
+
+QString fromNativePath(const std::string& path) {
+    return QString::fromLocal8Bit(path.c_str());
+}
+
+FileOpProgress toQtProgress(const FsOps::ProgressInfo& core) {
+    FileOpProgress qt{};
+    qt.bytesDone = core.bytesDone;
+    qt.bytesTotal = core.bytesTotal;
+    qt.filesDone = core.filesDone;
+    qt.filesTotal = core.filesTotal;
+    qt.currentPath = fromNativePath(core.currentPath);
+    return qt;
+}
+
+}  // namespace
 
 class QtFileOps::Worker : public QObject {
     Q_OBJECT
@@ -44,193 +74,107 @@ class QtFileOps::Worker : public QObject {
     void finished(bool success, const QString& errorMessage);
 
    private:
-    void performCopy(const FileOpRequest& req) {
-        FileOpProgress progressInfo;
-        progressInfo.filesTotal = req.sources.size();
-        progressInfo.filesDone = 0;
-        progressInfo.bytesTotal = 0;
-        progressInfo.bytesDone = 0;
+    FsOps::ProgressCallback makeProgressCallback() {
+        return [this](const FsOps::ProgressInfo& coreInfo) {
+            Q_EMIT progress(toQtProgress(coreInfo));
+            return !cancelled_.load();
+        };
+    }
 
-        // Calculate total size
-        for (const QString& source : req.sources) {
-            QFileInfo fileInfo(source);
-            if (fileInfo.isFile()) {
-                progressInfo.bytesTotal += fileInfo.size();
-            }
+    bool computeStatsForFile(const std::string& path, FsOps::ProgressInfo& progress, FsOps::Error& err) {
+        struct stat st;
+        if (::lstat(path.c_str(), &st) < 0) {
+            err.code = errno;
+            err.message = "lstat: " + std::string(std::strerror(errno));
+            return false;
         }
 
-        Q_EMIT progress(progressInfo);
+        if (S_ISREG(st.st_mode)) {
+            progress.bytesTotal += static_cast<std::uint64_t>(st.st_size);
+        }
+        return true;
+    }
 
-        for (const QString& source : req.sources) {
+    bool performOperationList(
+        const FileOpRequest& req,
+        const std::function<bool(const std::string&, const std::string&, FsOps::ProgressInfo&, FsOps::Error&)>& op,
+        bool needsDestination) {
+        for (const QString& sourcePath : req.sources) {
             if (cancelled_.load()) {
                 Q_EMIT finished(false, QStringLiteral("Operation cancelled"));
-                return;
+                return false;
             }
 
-            QFileInfo sourceInfo(source);
-            QString destinationPath = req.destination + QLatin1Char('/') + sourceInfo.fileName();
+            const QString fileName = QFileInfo(sourcePath).fileName();
+            const QString destinationPath =
+                needsDestination ? (req.destination + QLatin1Char('/') + fileName) : QString();
 
-            progressInfo.currentPath = source;
-            Q_EMIT progress(progressInfo);
+            const std::string srcNative = toNativePath(sourcePath);
+            const std::string dstNative = needsDestination ? toNativePath(destinationPath) : std::string();
 
-            if (sourceInfo.isDir()) {
-                if (!copyDirectory(source, destinationPath, progressInfo)) {
-                    Q_EMIT finished(false, QStringLiteral("Failed to copy directory: %1").arg(source));
-                    return;
+            FsOps::ProgressInfo progress{};
+            progress.filesTotal = 1;
+            progress.filesDone = 0;
+            progress.currentPath = srcNative;
+
+            FsOps::Error err;
+            if (!computeStatsForFile(srcNative, progress, err)) {
+                Q_EMIT finished(false, QString::fromLocal8Bit(err.message.c_str()));
+                return false;
+            }
+
+            auto opProgress = makeProgressCallback();
+            if (!op(srcNative, dstNative, progress, err)) {
+                if (cancelled_.load() || err.code == ECANCELED) {
+                    Q_EMIT finished(false, QStringLiteral("Operation cancelled"));
                 }
-            }
-            else {
-                if (!copyFile(source, destinationPath, progressInfo)) {
-                    Q_EMIT finished(false, QStringLiteral("Failed to copy file: %1").arg(source));
-                    return;
+                else {
+                    const QString msg =
+                        err.isSet() ? QString::fromLocal8Bit(err.message.c_str()) : QStringLiteral("Operation failed");
+                    Q_EMIT finished(false, msg);
                 }
+                return false;
             }
 
-            progressInfo.filesDone++;
-            Q_EMIT progress(progressInfo);
+            progress.filesDone = 1;
+            opProgress(progress);
         }
 
         Q_EMIT finished(true, QString());
+        return true;
+    }
+
+    void performCopy(const FileOpRequest& req) {
+        performOperationList(
+            req,
+            [this, req](const std::string& src, const std::string& dst, FsOps::ProgressInfo& progress,
+                        FsOps::Error& err) {
+                auto cb = makeProgressCallback();
+                Q_UNUSED(req);
+                return FsOps::copy_path(src, dst, progress, cb, err);
+            },
+            /*needsDestination=*/true);
     }
 
     void performMove(const FileOpRequest& req) {
-        // For move operations, try rename first, fall back to copy+delete
-        for (const QString& source : req.sources) {
-            if (cancelled_.load()) {
-                Q_EMIT finished(false, QStringLiteral("Operation cancelled"));
-                return;
-            }
-
-            QFileInfo sourceInfo(source);
-            QString destinationPath = req.destination + QLatin1Char('/') + sourceInfo.fileName();
-
-            // Try rename first (same filesystem)
-            if (QFile::rename(source, destinationPath)) {
-                continue;
-            }
-
-            // Fall back to copy + delete
-            FileOpProgress progressInfo;
-            progressInfo.filesTotal = 1;
-            progressInfo.filesDone = 0;
-            progressInfo.bytesTotal = sourceInfo.size();
-            progressInfo.bytesDone = 0;
-            progressInfo.currentPath = source;
-
-            if (!copyFile(source, destinationPath, progressInfo)) {
-                Q_EMIT finished(false, QStringLiteral("Failed to move file: %1").arg(source));
-                return;
-            }
-
-            if (!QFile::remove(source)) {
-                // Clean up copied file if delete fails
-                QFile::remove(destinationPath);
-                Q_EMIT finished(false, QStringLiteral("Failed to remove original file: %1").arg(source));
-                return;
-            }
-        }
-
-        Q_EMIT finished(true, QString());
+        performOperationList(
+            req,
+            [this](const std::string& src, const std::string& dst, FsOps::ProgressInfo& progress, FsOps::Error& err) {
+                auto cb = makeProgressCallback();
+                return FsOps::move_path(src, dst, progress, cb, err);
+            },
+            /*needsDestination=*/true);
     }
 
     void performDelete(const FileOpRequest& req) {
-        for (const QString& source : req.sources) {
-            if (cancelled_.load()) {
-                Q_EMIT finished(false, QStringLiteral("Operation cancelled"));
-                return;
-            }
-
-            QFileInfo fileInfo(source);
-
-            FileOpProgress progressInfo;
-            progressInfo.currentPath = source;
-            Q_EMIT progress(progressInfo);
-
-            if (fileInfo.isDir()) {
-                QDir dir(source);
-                if (!dir.removeRecursively()) {
-                    Q_EMIT finished(false, QStringLiteral("Failed to delete directory: %1").arg(source));
-                    return;
-                }
-            }
-            else {
-                if (!QFile::remove(source)) {
-                    Q_EMIT finished(false, QStringLiteral("Failed to delete file: %1").arg(source));
-                    return;
-                }
-            }
-        }
-
-        Q_EMIT finished(true, QString());
-    }
-
-    bool copyFile(const QString& source, const QString& destination, FileOpProgress& progressInfo) {
-        QFile sourceFile(source);
-        QSaveFile destFile(destination);
-
-        if (!sourceFile.open(QIODevice::ReadOnly)) {
-            return false;
-        }
-
-        if (!destFile.open(QIODevice::WriteOnly)) {
-            return false;
-        }
-
-        const qint64 bufferSize = 64 * 1024;  // 64KB chunks
-        char buffer[bufferSize];
-        qint64 bytesRead;
-
-        while ((bytesRead = sourceFile.read(buffer, bufferSize)) > 0) {
-            if (cancelled_.load()) {
-                return false;
-            }
-
-            if (destFile.write(buffer, bytesRead) != bytesRead) {
-                return false;
-            }
-
-            progressInfo.bytesDone += bytesRead;
-            Q_EMIT progress(progressInfo);
-        }
-
-        return destFile.commit();
-    }
-
-    bool copyDirectory(const QString& source, const QString& destination, FileOpProgress& progressInfo) {
-        QDir sourceDir(source);
-        if (!sourceDir.exists()) {
-            return false;
-        }
-
-        QDir destDir;
-        if (!destDir.mkpath(destination)) {
-            return false;
-        }
-
-        // Copy all files and subdirectories
-        const auto entries = sourceDir.entryList(QDir::Files | QDir::Dirs | QDir::NoDotAndDotDot);
-        for (const QString& entry : entries) {
-            if (cancelled_.load()) {
-                return false;
-            }
-
-            QString sourcePath = source + QLatin1Char('/') + entry;
-            QString destPath = destination + QLatin1Char('/') + entry;
-
-            QFileInfo entryInfo(sourcePath);
-            if (entryInfo.isDir()) {
-                if (!copyDirectory(sourcePath, destPath, progressInfo)) {
-                    return false;
-                }
-            }
-            else {
-                if (!copyFile(sourcePath, destPath, progressInfo)) {
-                    return false;
-                }
-            }
-        }
-
-        return true;
+        performOperationList(
+            req,
+            [this](const std::string& src, const std::string& /*unused*/, FsOps::ProgressInfo& progress,
+                   FsOps::Error& err) {
+                auto cb = makeProgressCallback();
+                return FsOps::delete_path(src, progress, cb, err);
+            },
+            /*needsDestination=*/false);
     }
 
     std::atomic<bool> cancelled_;
@@ -248,8 +192,6 @@ QtFileOps::QtFileOps(QObject* parent) : IFileOps(parent), worker_(new Worker), w
 }
 
 void QtFileOps::onWorkerFinished(bool success, const QString& errorMessage) {
-    Q_UNUSED(success);
-    Q_UNUSED(errorMessage);
     Q_EMIT finished(success, errorMessage);
 }
 
@@ -262,7 +204,6 @@ QtFileOps::~QtFileOps() {
 }
 
 void QtFileOps::start(const FileOpRequest& req) {
-    Q_UNUSED(req);
     Q_EMIT startRequest(req);
 }
 

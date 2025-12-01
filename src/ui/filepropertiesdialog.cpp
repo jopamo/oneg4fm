@@ -22,6 +22,7 @@
 #include <QTabWidget>
 #include <QVBoxLayout>
 #include <cmath>
+#include "fsqt.h"
 
 namespace {
 
@@ -350,9 +351,8 @@ void FilePropertiesDialog::onApplyClicked() {
         adjustBit(perms, QFile::WriteOther, otherWriteState);
         adjustBit(perms, QFile::ExeOther, otherExecState);
 
-        QFile file(path);
-        if (!file.setPermissions(perms)) {
-            error = tr("Failed to change permissions for %1").arg(path);
+        if (!PCManFM::FsQt::setPermissions(path, perms, error)) {
+            error = tr("Failed to change permissions for %1: %2").arg(path, error);
             return false;
         }
 

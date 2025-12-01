@@ -12,6 +12,7 @@
 #include "../src/backends/qt/qt_fileinfo.h"
 #include "../src/core/backend_registry.h"
 #include "../src/ui/filepropertiesdialog.h"
+#include "../src/core/fs_ops.h"
 
 // LibFM-Qt headers
 #include <libfm-qt6/utilities.h>
@@ -73,14 +74,22 @@ bool renameFileWithBackend(const std::shared_ptr<const Fm::FileInfo>& file, QWid
     if (ok && !newName.isEmpty() && newName != currentName) {
         const QString newPath = fileInfo.absolutePath() + QLatin1Char('/') + newName;
 
-        QFile fileObj(currentPath);
-        if (fileObj.rename(newPath)) {
+        FsOps::ProgressInfo progress{};
+        progress.filesTotal = 1;
+        auto cb = [](const FsOps::ProgressInfo&) { return true; };
+        FsOps::Error err;
+
+        const std::string srcNative = QFile::encodeName(currentPath).toStdString();
+        const std::string dstNative = QFile::encodeName(newPath).toStdString();
+
+        if (FsOps::move_path(srcNative, dstNative, progress, cb, err)) {
             return true;
         }
 
-        QMessageBox::critical(
-            parent, QApplication::translate("MainWindow", "Error"),
-            QApplication::translate("MainWindow", "Failed to rename file: %1").arg(fileObj.errorString()));
+        const QString errorMsg =
+            err.isSet() ? QString::fromLocal8Bit(err.message.c_str()) : QStringLiteral("Unknown error");
+        QMessageBox::critical(parent, QApplication::translate("MainWindow", "Error"),
+                              QApplication::translate("MainWindow", "Failed to rename file: %1").arg(errorMsg));
         return false;
     }
 

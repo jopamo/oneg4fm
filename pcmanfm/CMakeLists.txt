@@ -30,7 +30,9 @@ set(pcmanfm_SRCS
     ../src/backends/qt/qt_fileops.cpp
     ../src/backends/qt/qt_fileinfo.cpp
     ../src/backends/qt/qt_foldermodel.cpp
+    ../src/core/fs_ops.cpp
     ../src/ui/filepropertiesdialog.cpp
+    ../src/ui/fsqt.cpp
     ../src/core/ifoldermodel.h
 )
 

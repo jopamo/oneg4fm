@@ -28,6 +28,7 @@
 #include <QSettings>
 #include <QStandardPaths>
 #include <algorithm>
+#include "../src/ui/fsqt.h"
 
 namespace PCManFM {
 
@@ -831,7 +832,8 @@ void Settings::saveFolderSettings(const Fm::FilePath& path, const FolderSettings
     if (path) {
         // ensure that we have the libfm dir
         QString dirName = xdgUserConfigDir() + QStringLiteral("/libfm");
-        QDir().mkpath(dirName);  // if libfm config dir does not exist, create it
+        QString error;
+        FsQt::makeDirParents(dirName, error);  // if libfm config dir does not exist, create it
 
         Fm::FolderConfig cfg(path);
         cfg.setString("SortOrder", sortOrderToString(settings.sortOrder()));
