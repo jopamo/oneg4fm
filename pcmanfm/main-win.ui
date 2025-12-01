@@ -76,20 +76,10 @@
      <addaction name="actionNewFolder"/>
      <addaction name="actionNewBlankFile"/>
     </widget>
-    <widget class="QMenu" name="menuRecentFiles">
-     <property name="title">
-      <string>Recent F&amp;iles</string>
-     </property>
-     <property name="icon">
-      <iconset theme="document-open-recent">
-       <normaloff>.</normaloff>.</iconset>
-     </property>
-    </widget>
     <addaction name="actionNewTab"/>
     <addaction name="actionNewWin"/>
     <addaction name="separator"/>
     <addaction name="menuCreateNew"/>
-    <addaction name="menuRecentFiles"/>
     <addaction name="separator"/>
     <addaction name="actionFileProperties"/>
     <addaction name="actionFolderProperties"/>
@@ -975,14 +965,6 @@
   <action name="actionCleanPerFolderConfig">
    <property name="text">
     <string>&amp;Remove Settings of Nonexistent Folders</string>
-   </property>
-  </action>
-  <action name="actionClearRecent">
-   <property name="icon">
-    <iconset theme="edit-clear"/>
-   </property>
-   <property name="text">
-    <string>&amp;Clear</string>
    </property>
   </action>
  </widget>

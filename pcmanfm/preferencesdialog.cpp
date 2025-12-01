@@ -228,7 +228,6 @@ void PreferencesDialog::initBehaviorPage(Settings& settings) {
     ui.quickExec->setChecked(settings.quickExec());
     ui.selectNewFiles->setChecked(settings.selectNewFiles());
     ui.singleWindowMode->setChecked(settings.singleWindowMode());
-    ui.recentFilesSpinBox->setValue(settings.getRecentFilesNumber());
 
     connect(ui.quickExec, &QAbstractButton::toggled, this,
             [this, &settings](bool checked) { restartWarning(settings.quickExec() != checked); });
@@ -428,7 +427,6 @@ void PreferencesDialog::applyBehaviorPage(Settings& settings) {
     settings.setQuickExec(ui.quickExec->isChecked());
     settings.setSelectNewFiles(ui.selectNewFiles->isChecked());
     settings.setSingleWindowMode(ui.singleWindowMode->isChecked());
-    settings.setRecentFilesNumber(ui.recentFilesSpinBox->value());
 }
 
 void PreferencesDialog::applyThumbnailPage(Settings& settings) {

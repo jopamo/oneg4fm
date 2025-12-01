@@ -522,16 +522,6 @@ class Settings : public QObject {
         }
     }
 
-    int getRecentFilesNumber() const { return recentFilesNumber_; }
-    void setRecentFilesNumber(int n);
-
-    QStringList getRecentFiles() const { return recentFiles_; }
-    void clearRecentFiles();
-    void addRecentFile(const QString& file);
-
-    void loadRecentFiles();
-    void saveRecentFiles();
-
    private:
     bool loadFile(QString filePath);
     bool saveFile(QString filePath);
@@ -631,10 +621,6 @@ class Settings : public QObject {
     // detailed list columns
     QList<QVariant> customColumnWidths_;
     QList<QVariant> hiddenColumns_;
-
-    // recent files
-    int recentFilesNumber_;
-    QStringList recentFiles_;
 };
 
 }  // namespace PCManFM

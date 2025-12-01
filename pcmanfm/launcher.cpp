@@ -101,39 +101,4 @@ bool Launcher::openFolder(GAppLaunchContext* ctx, const Fm::FileInfoList& folder
     return true;
 }
 
-void Launcher::launchedFiles(const Fm::FileInfoList& files) const {
-    Settings& settings = appSettings();
-    if (settings.getRecentFilesNumber() <= 0) {
-        return;
-    }
-
-    for (const auto& file : files) {
-        // Only add native files that are NOT directories to recent history
-        if (file->isNative() && !file->isDir()) {
-            settings.addRecentFile(QString::fromUtf8(file->path().localPath().get()));
-        }
-    }
-}
-
-void Launcher::launchedPaths(const Fm::FilePathList& paths) const {
-    Settings& settings = appSettings();
-    if (settings.getRecentFilesNumber() <= 0) {
-        return;
-    }
-
-    for (const auto& path : paths) {
-        if (!path.isNative()) {
-            continue;
-        }
-
-        const QString pathStr = QString::fromUtf8(path.localPath().get());
-
-        // QFileInfo check is required here because FilePath doesn't know if it's a dir
-        // without querying the filesystem
-        if (!QFileInfo(pathStr).isDir()) {
-            settings.addRecentFile(pathStr);
-        }
-    }
-}
-
 }  // namespace PCManFM

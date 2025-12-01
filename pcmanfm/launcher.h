@@ -26,8 +26,6 @@ class Launcher : public Fm::FileLauncher {
 
    protected:
     bool openFolder(GAppLaunchContext* ctx, const Fm::FileInfoList& folderInfos, Fm::GErrorPtr& err) override;
-    void launchedFiles(const Fm::FileInfoList& files) const override;
-    void launchedPaths(const Fm::FilePathList& paths) const override;
 
    private:
     MainWindow* mainWindow_;

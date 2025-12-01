@@ -70,7 +70,6 @@ void TestSettingsFunctionality::testSettingsInitialization() {
     QVERIFY(!settings.searchRecursive());
     QVERIFY(!settings.searchhHidden());
     QCOMPARE(settings.maxSearchHistory(), 0);
-    QCOMPARE(settings.getRecentFilesNumber(), 0);
 }
 
 void TestSettingsFunctionality::testSettingsProfileDir() {
@@ -203,7 +202,6 @@ void TestSettingsFunctionality::testSettingsLoadSave() {
     QCOMPARE(loadedSettings.searchRecursive(), settings.searchRecursive());
     QCOMPARE(loadedSettings.searchhHidden(), settings.searchhHidden());
     QCOMPARE(loadedSettings.maxSearchHistory(), settings.maxSearchHistory());
-    QCOMPARE(loadedSettings.getRecentFilesNumber(), settings.getRecentFilesNumber());
 }
 
 QTEST_MAIN(TestSettingsFunctionality)

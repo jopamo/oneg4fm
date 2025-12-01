@@ -216,9 +216,6 @@ class MainWindow : public QMainWindow {
     void focusPathEntry();
     void toggleMenuBar(bool checked);
     void on_actionMenu_triggered();
-    void updateRecenMenu();
-    void clearRecentMenu();
-    void lanunchRecentFile();
     void detachTab();
 
     void onBookmarksChanged();

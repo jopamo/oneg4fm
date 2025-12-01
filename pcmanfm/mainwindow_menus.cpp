@@ -5,7 +5,6 @@
 
 #include <QActionGroup>
 #include <QCursor>
-#include <QFontMetrics>
 #include <QMenu>
 #include <QMessageBox>
 #include <QPoint>
@@ -78,85 +77,6 @@ void MainWindow::on_actionMenu_triggered() {
     }
 
     popup.exec(pos);
-}
-
-void MainWindow::updateRecenMenu() {
-    Settings& settings = appSettings();
-    const int recentNumber = settings.getRecentFilesNumber();
-    const auto actions = ui.menuRecentFiles->actions();
-
-    // there is a separator and a clear action
-    if (actions.size() < recentNumber + 2) {
-        return;
-    }
-
-    const auto recentFiles = settings.getRecentFiles();
-    const int recentSize = recentFiles.size();
-
-    QFontMetrics metrics(ui.menuRecentFiles->font());
-    // Optimization: Calculate max width once
-    const int w = 150 * metrics.horizontalAdvance(QLatin1Char(' '));
-
-    for (int i = 0; i < recentNumber; ++i) {
-        if (i < recentSize) {
-            auto text = recentFiles.value(i);
-
-            // Format text for menu display (escape ampersands, convert tabs)
-            text.replace(QLatin1Char('&'), QStringLiteral("&&")).replace(QLatin1Char('\t'), QLatin1Char(' '));
-
-            actions.at(i)->setText(metrics.elidedText(text, Qt::ElideMiddle, w));
-
-            QIcon icon;
-            // LibFM Migration Note: Replace Fm::MimeType with standard QFileInfo/QMimeDatabase logic later
-            auto mimeType = Fm::MimeType::guessFromFileName(recentFiles.at(i).toLocal8Bit().constData());
-            if (!mimeType->isUnknownType()) {
-                if (auto icn = mimeType->icon()) {
-                    icon = icn->qicon();
-                }
-            }
-
-            actions.at(i)->setIcon(icon);
-            actions.at(i)->setData(recentFiles.at(i));
-            actions.at(i)->setVisible(true);
-        }
-        else {
-            actions.at(i)->setText(QString());
-            actions.at(i)->setIcon(QIcon());
-            actions.at(i)->setData(QVariant());
-            actions.at(i)->setVisible(false);
-        }
-    }
-
-    ui.actionClearRecent->setEnabled(recentSize != 0);
-}
-
-void MainWindow::clearRecentMenu() {
-    Settings& settings = appSettings();
-    settings.clearRecentFiles();
-    updateRecenMenu();
-}
-
-void MainWindow::lanunchRecentFile() {
-    auto* action = qobject_cast<QAction*>(sender());
-    if (!action) {
-        return;
-    }
-
-    const QString pathStr = action->data().toString();
-    if (pathStr.isEmpty()) {
-        return;
-    }
-
-    Settings& settings = appSettings();
-    settings.addRecentFile(pathStr);
-
-    const QByteArray pathArray = pathStr.toLocal8Bit();
-    auto path = Fm::FilePath::fromLocalPath(pathArray.constData());
-
-    Fm::FilePathList pathList;
-    pathList.push_back(std::move(path));
-
-    fileLauncher_.launchPaths(nullptr, pathList);
 }
 
 void MainWindow::updateStatusBarForCurrentPage() {
