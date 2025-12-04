@@ -60,11 +60,11 @@ class FolderSettings {
     void setViewMode(Panel::FolderView::ViewMode value) { viewMode_ = value; }
 
     // Conversion functions (implemented in settings.cpp)
-    static Panel::FolderView::ViewMode viewModeFromString(const QString str);
-    static Qt::SortOrder sortOrderFromString(const QString str);
-    static Panel::FolderModel::ColumnId sortColumnFromString(const QString str);
+    static Panel::FolderView::ViewMode viewModeFromString(const QString& str);
+    static Qt::SortOrder sortOrderFromString(const QString& str);
+    static Panel::FolderModel::ColumnId sortColumnFromString(const QString& str);
     static Panel::SidePane::Mode sidePaneModeFromString(const QString& str);
-    static OpenDirTargetType bookmarkOpenMethodFromString(const QString str);
+    static OpenDirTargetType bookmarkOpenMethodFromString(const QString& str);
 
     bool sortFolderFirst() const { return sortFolderFirst_; }
 

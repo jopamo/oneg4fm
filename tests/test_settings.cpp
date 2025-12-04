@@ -14,7 +14,7 @@ using namespace PCManFM;
 class TestSettings : public QObject {
     Q_OBJECT
 
-   private slots:
+   private Q_SLOTS:
     void testBookmarkOpenMethodFromString();
     void testViewModeFromString();
     void testSortOrderFromString();
@@ -25,61 +25,61 @@ class TestSettings : public QObject {
 
 void TestSettings::testBookmarkOpenMethodFromString() {
     // Test all valid bookmark open methods
-    QCOMPARE(bookmarkOpenMethodFromString("new_tab"), OpenInNewTab);
-    QCOMPARE(bookmarkOpenMethodFromString("new_window"), OpenInNewWindow);
-    QCOMPARE(bookmarkOpenMethodFromString("last_window"), OpenInLastActiveWindow);
+    QCOMPARE(FolderSettings::bookmarkOpenMethodFromString("new_tab"), OpenInNewTab);
+    QCOMPARE(FolderSettings::bookmarkOpenMethodFromString("new_window"), OpenInNewWindow);
+    QCOMPARE(FolderSettings::bookmarkOpenMethodFromString("last_window"), OpenInLastActiveWindow);
 
     // Test default case
-    QCOMPARE(bookmarkOpenMethodFromString("invalid"), OpenInCurrentTab);
-    QCOMPARE(bookmarkOpenMethodFromString(""), OpenInCurrentTab);
+    QCOMPARE(FolderSettings::bookmarkOpenMethodFromString("invalid"), OpenInCurrentTab);
+    QCOMPARE(FolderSettings::bookmarkOpenMethodFromString(""), OpenInCurrentTab);
 }
 
 void TestSettings::testViewModeFromString() {
     // Test all valid view modes
-    QCOMPARE(viewModeFromString("icon"), Fm::FolderView::IconMode);
-    QCOMPARE(viewModeFromString("compact"), Fm::FolderView::CompactMode);
-    QCOMPARE(viewModeFromString("detailed"), Fm::FolderView::DetailedListMode);
-    QCOMPARE(viewModeFromString("thumbnail"), Fm::FolderView::ThumbnailMode);
+    QCOMPARE(FolderSettings::viewModeFromString("icon"), Panel::FolderView::IconMode);
+    QCOMPARE(FolderSettings::viewModeFromString("compact"), Panel::FolderView::CompactMode);
+    QCOMPARE(FolderSettings::viewModeFromString("detailed"), Panel::FolderView::DetailedListMode);
+    QCOMPARE(FolderSettings::viewModeFromString("thumbnail"), Panel::FolderView::ThumbnailMode);
 
     // Test default case
-    QCOMPARE(viewModeFromString("invalid"), Fm::FolderView::IconMode);
-    QCOMPARE(viewModeFromString(""), Fm::FolderView::IconMode);
+    QCOMPARE(FolderSettings::viewModeFromString("invalid"), Panel::FolderView::IconMode);
+    QCOMPARE(FolderSettings::viewModeFromString(""), Panel::FolderView::IconMode);
 }
 
 void TestSettings::testSortOrderFromString() {
     // Test sort order parsing
-    QCOMPARE(sortOrderFromString("ascending"), Qt::AscendingOrder);
-    QCOMPARE(sortOrderFromString("descending"), Qt::DescendingOrder);
+    QCOMPARE(FolderSettings::sortOrderFromString("ascending"), Qt::AscendingOrder);
+    QCOMPARE(FolderSettings::sortOrderFromString("descending"), Qt::DescendingOrder);
 
     // Test default case
-    QCOMPARE(sortOrderFromString("invalid"), Qt::AscendingOrder);
-    QCOMPARE(sortOrderFromString(""), Qt::AscendingOrder);
+    QCOMPARE(FolderSettings::sortOrderFromString("invalid"), Qt::AscendingOrder);
+    QCOMPARE(FolderSettings::sortOrderFromString(""), Qt::AscendingOrder);
 }
 
 void TestSettings::testSortColumnFromString() {
     // Test sort column parsing
-    QCOMPARE(sortColumnFromString("name"), Fm::FolderModel::ColumnFileName);
-    QCOMPARE(sortColumnFromString("size"), Fm::FolderModel::ColumnFileSize);
-    QCOMPARE(sortColumnFromString("type"), Fm::FolderModel::ColumnFileType);
-    QCOMPARE(sortColumnFromString("mtime"), Fm::FolderModel::ColumnFileMTime);
-    QCOMPARE(sortColumnFromString("ctime"), Fm::FolderModel::ColumnFileCrTime);
-    QCOMPARE(sortColumnFromString("dtime"), Fm::FolderModel::ColumnFileDTime);
-    QCOMPARE(sortColumnFromString("owner"), Fm::FolderModel::ColumnFileOwner);
-    QCOMPARE(sortColumnFromString("group"), Fm::FolderModel::ColumnFileGroup);
+    QCOMPARE(FolderSettings::sortColumnFromString("name"), Panel::FolderModel::ColumnFileName);
+    QCOMPARE(FolderSettings::sortColumnFromString("size"), Panel::FolderModel::ColumnFileSize);
+    QCOMPARE(FolderSettings::sortColumnFromString("type"), Panel::FolderModel::ColumnFileType);
+    QCOMPARE(FolderSettings::sortColumnFromString("mtime"), Panel::FolderModel::ColumnFileMTime);
+    QCOMPARE(FolderSettings::sortColumnFromString("crtime"), Panel::FolderModel::ColumnFileCrTime);
+    QCOMPARE(FolderSettings::sortColumnFromString("dtime"), Panel::FolderModel::ColumnFileDTime);
+    QCOMPARE(FolderSettings::sortColumnFromString("owner"), Panel::FolderModel::ColumnFileOwner);
+    QCOMPARE(FolderSettings::sortColumnFromString("group"), Panel::FolderModel::ColumnFileGroup);
 
     // Test default case
-    QCOMPARE(sortColumnFromString("invalid"), Fm::FolderModel::ColumnFileName);
-    QCOMPARE(sortColumnFromString(""), Fm::FolderModel::ColumnFileName);
+    QCOMPARE(FolderSettings::sortColumnFromString("invalid"), Panel::FolderModel::ColumnFileName);
+    QCOMPARE(FolderSettings::sortColumnFromString(""), Panel::FolderModel::ColumnFileName);
 }
 
 void TestSettings::testSidePaneModeFromString() {
     // Test side pane mode parsing
-    QCOMPARE(sidePaneModeFromString("places"), Fm::SidePane::Places);
-    QCOMPARE(sidePaneModeFromString("directory_tree"), Fm::SidePane::DirectoryTree);
+    QCOMPARE(FolderSettings::sidePaneModeFromString("places"), Panel::SidePane::ModePlaces);
+    QCOMPARE(FolderSettings::sidePaneModeFromString("dirtree"), Panel::SidePane::ModeDirTree);
 
     // Test default case
-    QCOMPARE(sidePaneModeFromString("invalid"), Fm::SidePane::Places);
-    QCOMPARE(sidePaneModeFromString(""), Fm::SidePane::Places);
+    QCOMPARE(FolderSettings::sidePaneModeFromString("invalid"), Panel::SidePane::ModePlaces);
+    QCOMPARE(FolderSettings::sidePaneModeFromString(""), Panel::SidePane::ModePlaces);
 }
 
 void TestSettings::testFolderSettings() {

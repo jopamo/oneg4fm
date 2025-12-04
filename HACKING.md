@@ -323,6 +323,8 @@ libfm-qt is only needed if you are building the legacy version. The modernized f
 
 ### 6.2 Building
 
+Tests are disabled by default; add `-DBUILD_TESTING=ON` when you want to build and run them.
+
 ```bash
 # from your home or wherever you keep sources
 cd "$HOME/projects/pcmanfm-qt"

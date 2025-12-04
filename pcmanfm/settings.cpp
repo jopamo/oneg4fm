@@ -31,15 +31,6 @@
 namespace PCManFM {
 
 inline static const char* bookmarkOpenMethodToString(OpenDirTargetType value);
-inline static OpenDirTargetType bookmarkOpenMethodFromString(const QString str);
-
-inline static Panel::FolderView::ViewMode viewModeFromString(const QString str);
-
-inline static Panel::SidePane::Mode sidePaneModeFromString(const QString& str);
-
-inline static Qt::SortOrder sortOrderFromString(const QString str);
-
-inline static Panel::FolderModel::ColumnId sortColumnFromString(const QString str);
 
 Settings::Settings()
     : QObject(),
@@ -186,7 +177,8 @@ bool Settings::loadFile(QString filePath) {
 
     settings.beginGroup(QStringLiteral("Behavior"));
     singleWindowMode_ = settings.value(QStringLiteral("SingleWindowMode"), false).toBool();
-    bookmarkOpenMethod_ = bookmarkOpenMethodFromString(settings.value(QStringLiteral("BookmarkOpenMethod")).toString());
+    bookmarkOpenMethod_ =
+        FolderSettings::bookmarkOpenMethodFromString(settings.value(QStringLiteral("BookmarkOpenMethod")).toString());
     preservePermissions_ = settings.value(QStringLiteral("PreservePermissions"), false).toBool();
     // settings for use with libfm
     useTrash_ = false;  // trash disabled
@@ -198,8 +190,8 @@ bool Settings::loadFile(QString filePath) {
     confirmTrash_ = settings.value(QStringLiteral("ConfirmTrash"), false).toBool();
     setQuickExec(settings.value(QStringLiteral("QuickExec"), false).toBool());
     selectNewFiles_ = settings.value(QStringLiteral("SelectNewFiles"), false).toBool();
-    settings.endGroup();
-
+    openWithDefaultFileManager_ = settings.value(QStringLiteral("OpenWithDefaultFileManager"), false).toBool();
+    allSticky_ = settings.value(QStringLiteral("AllSticky"), false).toBool();
     settings.endGroup();
 
     settings.beginGroup(QStringLiteral("Thumbnail"));
@@ -210,10 +202,11 @@ bool Settings::loadFile(QString filePath) {
     settings.endGroup();
 
     settings.beginGroup(QStringLiteral("FolderView"));
-    viewMode_ = viewModeFromString(settings.value(QStringLiteral("Mode"), Panel::FolderView::IconMode).toString());
+    viewMode_ = FolderSettings::viewModeFromString(
+        settings.value(QStringLiteral("Mode"), Panel::FolderView::IconMode).toString());
     showHidden_ = settings.value(QStringLiteral("ShowHidden"), false).toBool();
-    sortOrder_ = sortOrderFromString(settings.value(QStringLiteral("SortOrder")).toString());
-    sortColumn_ = sortColumnFromString(settings.value(QStringLiteral("SortColumn")).toString());
+    sortOrder_ = FolderSettings::sortOrderFromString(settings.value(QStringLiteral("SortOrder")).toString());
+    sortColumn_ = FolderSettings::sortColumnFromString(settings.value(QStringLiteral("SortColumn")).toString());
     sortFolderFirst_ = settings.value(QStringLiteral("SortFolderFirst"), true).toBool();
     sortHiddenLast_ = settings.value(QStringLiteral("SortHiddenLast"), false).toBool();
     sortCaseSensitive_ = settings.value(QStringLiteral("SortCaseSensitive"), false).toBool();
@@ -263,7 +256,7 @@ bool Settings::loadFile(QString filePath) {
     splitViewTabsNum_ = settings.value(QStringLiteral("SplitViewTabsNum")).toInt();
     splitterPos_ = settings.value(QStringLiteral("SplitterPos"), 150).toInt();
     sidePaneVisible_ = settings.value(QStringLiteral("SidePaneVisible"), true).toBool();
-    sidePaneMode_ = sidePaneModeFromString(settings.value(QStringLiteral("SidePaneMode")).toString());
+    sidePaneMode_ = FolderSettings::sidePaneModeFromString(settings.value(QStringLiteral("SidePaneMode")).toString());
     showMenuBar_ = settings.value(QStringLiteral("ShowMenuBar"), true).toBool();
     splitView_ = settings.value(QStringLiteral("SplitView"), false).toBool();
     pathBarButtons_ = settings.value(QStringLiteral("PathBarButtons"), true).toBool();
@@ -316,6 +309,8 @@ bool Settings::saveFile(QString filePath) {
     settings.setValue(QStringLiteral("ConfirmTrash"), confirmTrash_);
     settings.setValue(QStringLiteral("QuickExec"), quickExec_);
     settings.setValue(QStringLiteral("SelectNewFiles"), selectNewFiles_);
+    settings.setValue(QStringLiteral("OpenWithDefaultFileManager"), openWithDefaultFileManager_);
+    settings.setValue(QStringLiteral("AllSticky"), allSticky_);
     settings.endGroup();
 
     settings.beginGroup(QStringLiteral("Thumbnail"));
@@ -568,7 +563,7 @@ static const char* bookmarkOpenMethodToString(OpenDirTargetType value) {
     return "";
 }
 
-static OpenDirTargetType bookmarkOpenMethodFromString(const QString str) {
+OpenDirTargetType FolderSettings::bookmarkOpenMethodFromString(const QString& str) {
     if (str == QStringLiteral("new_tab")) {
         return OpenInNewTab;
     }
@@ -581,7 +576,7 @@ static OpenDirTargetType bookmarkOpenMethodFromString(const QString str) {
     return OpenInCurrentTab;
 }
 
-Panel::FolderView::ViewMode viewModeFromString(const QString str) {
+Panel::FolderView::ViewMode FolderSettings::viewModeFromString(const QString& str) {
     Panel::FolderView::ViewMode ret;
     if (str == QLatin1String("icon")) {
         ret = Panel::FolderView::IconMode;
@@ -601,11 +596,11 @@ Panel::FolderView::ViewMode viewModeFromString(const QString str) {
     return ret;
 }
 
-static Qt::SortOrder sortOrderFromString(const QString str) {
+Qt::SortOrder FolderSettings::sortOrderFromString(const QString& str) {
     return (str == QLatin1String("descending") ? Qt::DescendingOrder : Qt::AscendingOrder);
 }
 
-static Panel::FolderModel::ColumnId sortColumnFromString(const QString str) {
+Panel::FolderModel::ColumnId FolderSettings::sortColumnFromString(const QString& str) {
     Panel::FolderModel::ColumnId ret;
     if (str == QLatin1String("name")) {
         ret = Panel::FolderModel::ColumnFileName;
@@ -637,7 +632,7 @@ static Panel::FolderModel::ColumnId sortColumnFromString(const QString str) {
     return ret;
 }
 
-static Panel::SidePane::Mode sidePaneModeFromString(const QString& str) {
+Panel::SidePane::Mode FolderSettings::sidePaneModeFromString(const QString& str) {
     Panel::SidePane::Mode ret;
     if (str == QLatin1String("none")) {
         ret = Panel::SidePane::ModeNone;
@@ -704,20 +699,20 @@ FolderSettings Settings::loadFolderSettings(const Panel::FilePath& path) const {
         // load sorting
         str = cfg.getString("SortOrder");
         if (str != nullptr) {
-            settings.setSortOrder(sortOrderFromString(QString::fromUtf8(str)));
+            settings.setSortOrder(FolderSettings::sortOrderFromString(QString::fromUtf8(str)));
             g_free(str);
         }
 
         str = cfg.getString("SortColumn");
         if (str != nullptr) {
-            settings.setSortColumn(sortColumnFromString(QString::fromUtf8(str)));
+            settings.setSortColumn(FolderSettings::sortColumnFromString(QString::fromUtf8(str)));
             g_free(str);
         }
 
         str = cfg.getString("ViewMode");
         if (str != nullptr) {
             // set view mode
-            settings.setViewMode(viewModeFromString(QString::fromUtf8(str)));
+            settings.setViewMode(FolderSettings::viewModeFromString(QString::fromUtf8(str)));
             g_free(str);
         }
 

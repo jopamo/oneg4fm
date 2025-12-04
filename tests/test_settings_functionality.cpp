@@ -3,6 +3,7 @@
  * tests/test_settings_functionality.cpp
  */
 
+#include <QFile>
 #include <QObject>
 #include <QSettings>
 #include <QStandardPaths>
@@ -16,7 +17,7 @@
 class TestSettingsFunctionality : public QObject {
     Q_OBJECT
 
-   private slots:
+   private Q_SLOTS:
     void testSettingsInitialization();
     void testSettingsProfileDir();
     void testSettingsStringConversions();
@@ -29,28 +30,32 @@ void TestSettingsFunctionality::testSettingsInitialization() {
 
     // Test default values
     QVERIFY(!settings.singleWindowMode());
-    QVERIFY(settings.mountOnStartup());
-    QVERIFY(settings.mountRemovable());
-    QVERIFY(settings.autoRun());
     QVERIFY(settings.alwaysShowTabs());
     QVERIFY(settings.showTabClose());
     QVERIFY(settings.rememberWindowSize());
     QVERIFY(settings.isSidePaneVisible());
+    QCOMPARE(settings.sidePaneMode(), Panel::SidePane::ModePlaces);
     QVERIFY(settings.showMenuBar());
     QVERIFY(!settings.splitView());
+
+    QCOMPARE(settings.viewMode(), Panel::FolderView::IconMode);
     QVERIFY(!settings.showHidden());
+    QCOMPARE(settings.sortOrder(), Qt::AscendingOrder);
+    QCOMPARE(settings.sortColumn(), Panel::FolderModel::ColumnFileName);
     QVERIFY(settings.sortFolderFirst());
     QVERIFY(!settings.sortHiddenLast());
     QVERIFY(!settings.sortCaseSensitive());
     QVERIFY(!settings.showFilter());
     QVERIFY(settings.pathBarButtons());
+
     QVERIFY(!settings.singleClick());
-    QVERIFY(settings.useTrash());
-    QVERIFY(settings.confirmDelete());
-    QVERIFY(!settings.noUsbTrash());
-    QVERIFY(!settings.confirmTrash());
     QVERIFY(!settings.quickExec());
     QVERIFY(!settings.selectNewFiles());
+    QVERIFY(settings.confirmDelete());
+    QVERIFY(!settings.confirmTrash());
+    QVERIFY(!settings.noUsbTrash());
+    QVERIFY(!settings.useTrash());  // supportTrash_ is false in this build
+
     QVERIFY(settings.showThumbnails());
     QVERIFY(!settings.siUnit());
     QVERIFY(!settings.backupAsHidden());
@@ -58,11 +63,13 @@ void TestSettingsFunctionality::testSettingsInitialization() {
     QVERIFY(settings.shadowHidden());
     QVERIFY(!settings.noItemTooltip());
     QVERIFY(settings.scrollPerPixel());
+
     QVERIFY(!settings.onlyUserTemplates());
     QVERIFY(!settings.templateTypeOnce());
     QVERIFY(!settings.templateRunApp());
     QVERIFY(!settings.openWithDefaultFileManager());
     QVERIFY(!settings.allSticky());
+
     QVERIFY(!settings.searchNameCaseInsensitive());
     QVERIFY(!settings.searchContentCaseInsensitive());
     QVERIFY(settings.searchNameRegexp());
@@ -142,13 +149,64 @@ void TestSettingsFunctionality::testSettingsLoadSave() {
 
     PCManFM::Settings settings;
 
-    // Test loading non-existent profile (should return false)
-    bool loadResult = settings.load("test-profile");
-    QVERIFY(!loadResult);
+    // Load default profile (creates empty defaults) and then customize values
+    QVERIFY(settings.load("test-profile"));
 
-    // Test saving settings
-    bool saveResult = settings.save("test-profile");
-    QVERIFY(saveResult);
+    settings.setSingleWindowMode(true);
+    settings.setBookmarkOpenMethod(PCManFM::OpenInNewWindow);
+    settings.setPreservePermissions(true);
+    settings.setAlwaysShowTabs(false);
+    settings.setShowTabClose(false);
+    settings.setSwitchToNewTab(true);
+    settings.setReopenLastTabs(true);
+    settings.showSidePane(false);
+    settings.setSidePaneMode(Panel::SidePane::ModeDirTree);
+    settings.setShowMenuBar(false);
+    settings.setSplitView(true);
+    settings.setPathBarButtons(false);
+
+    settings.setViewMode(Panel::FolderView::DetailedListMode);
+    settings.setShowHidden(true);
+    settings.setSortOrder(Qt::DescendingOrder);
+    settings.setSortColumn(Panel::FolderModel::ColumnFileSize);
+    settings.setSortFolderFirst(false);
+    settings.setSortHiddenLast(true);
+    settings.setSortCaseSensitive(true);
+    settings.setShowFilter(true);
+
+    settings.setSingleClick(true);
+    settings.setConfirmDelete(false);
+    settings.setNoUsbTrash(true);
+    settings.setConfirmTrash(true);
+    settings.setQuickExec(true);
+    settings.setSelectNewFiles(true);
+
+    settings.setShowThumbnails(false);
+    settings.setSiUnit(true);
+    settings.setBackupAsHidden(true);
+    settings.setShowFullNames(false);
+    settings.setShadowHidden(false);
+    settings.setNoItemTooltip(true);
+    settings.setScrollPerPixel(false);
+
+    settings.setOnlyUserTemplates(true);
+    settings.setTemplateTypeOnce(true);
+    settings.setTemplateRunApp(true);
+
+    settings.setOpenWithDefaultFileManager(true);
+    settings.setAllSticky(true);
+
+    settings.setSearchNameCaseInsensitive(true);
+    settings.setsearchContentCaseInsensitive(true);
+    settings.setSearchNameRegexp(false);
+    settings.setSearchContentRegexp(false);
+    settings.setSearchRecursive(true);
+    settings.setSearchhHidden(true);
+    settings.setMaxSearchHistory(5);
+    settings.addNamePattern(QStringLiteral("*.txt"));
+    settings.addContentPattern(QStringLiteral("needle"));
+
+    QVERIFY(settings.save("test-profile"));
 
     // Verify settings file was created
     QString settingsPath = settings.profileDir("test-profile") + QStringLiteral("/settings.conf");
@@ -156,33 +214,38 @@ void TestSettingsFunctionality::testSettingsLoadSave() {
 
     // Test loading the saved settings
     PCManFM::Settings loadedSettings;
-    bool reloadResult = loadedSettings.load("test-profile");
-    QVERIFY(reloadResult);
+    QVERIFY(loadedSettings.load("test-profile"));
 
-    // Verify loaded settings match original defaults
+    // Verify loaded settings match the saved values
     QCOMPARE(loadedSettings.singleWindowMode(), settings.singleWindowMode());
-    QCOMPARE(loadedSettings.mountOnStartup(), settings.mountOnStartup());
-    QCOMPARE(loadedSettings.mountRemovable(), settings.mountRemovable());
-    QCOMPARE(loadedSettings.autoRun(), settings.autoRun());
+    QCOMPARE(loadedSettings.bookmarkOpenMethod(), settings.bookmarkOpenMethod());
+    QCOMPARE(loadedSettings.preservePermissions(), settings.preservePermissions());
     QCOMPARE(loadedSettings.alwaysShowTabs(), settings.alwaysShowTabs());
     QCOMPARE(loadedSettings.showTabClose(), settings.showTabClose());
-    QCOMPARE(loadedSettings.rememberWindowSize(), settings.rememberWindowSize());
+    QCOMPARE(loadedSettings.switchToNewTab(), settings.switchToNewTab());
+    QCOMPARE(loadedSettings.reopenLastTabs(), settings.reopenLastTabs());
     QCOMPARE(loadedSettings.isSidePaneVisible(), settings.isSidePaneVisible());
+    QCOMPARE(loadedSettings.sidePaneMode(), settings.sidePaneMode());
     QCOMPARE(loadedSettings.showMenuBar(), settings.showMenuBar());
     QCOMPARE(loadedSettings.splitView(), settings.splitView());
+    QCOMPARE(loadedSettings.pathBarButtons(), settings.pathBarButtons());
+
+    QCOMPARE(loadedSettings.viewMode(), settings.viewMode());
     QCOMPARE(loadedSettings.showHidden(), settings.showHidden());
+    QCOMPARE(loadedSettings.sortOrder(), settings.sortOrder());
+    QCOMPARE(loadedSettings.sortColumn(), settings.sortColumn());
     QCOMPARE(loadedSettings.sortFolderFirst(), settings.sortFolderFirst());
     QCOMPARE(loadedSettings.sortHiddenLast(), settings.sortHiddenLast());
     QCOMPARE(loadedSettings.sortCaseSensitive(), settings.sortCaseSensitive());
     QCOMPARE(loadedSettings.showFilter(), settings.showFilter());
-    QCOMPARE(loadedSettings.pathBarButtons(), settings.pathBarButtons());
+
     QCOMPARE(loadedSettings.singleClick(), settings.singleClick());
-    QCOMPARE(loadedSettings.useTrash(), settings.useTrash());
     QCOMPARE(loadedSettings.confirmDelete(), settings.confirmDelete());
     QCOMPARE(loadedSettings.noUsbTrash(), settings.noUsbTrash());
     QCOMPARE(loadedSettings.confirmTrash(), settings.confirmTrash());
     QCOMPARE(loadedSettings.quickExec(), settings.quickExec());
     QCOMPARE(loadedSettings.selectNewFiles(), settings.selectNewFiles());
+
     QCOMPARE(loadedSettings.showThumbnails(), settings.showThumbnails());
     QCOMPARE(loadedSettings.siUnit(), settings.siUnit());
     QCOMPARE(loadedSettings.backupAsHidden(), settings.backupAsHidden());
@@ -190,11 +253,14 @@ void TestSettingsFunctionality::testSettingsLoadSave() {
     QCOMPARE(loadedSettings.shadowHidden(), settings.shadowHidden());
     QCOMPARE(loadedSettings.noItemTooltip(), settings.noItemTooltip());
     QCOMPARE(loadedSettings.scrollPerPixel(), settings.scrollPerPixel());
+
     QCOMPARE(loadedSettings.onlyUserTemplates(), settings.onlyUserTemplates());
     QCOMPARE(loadedSettings.templateTypeOnce(), settings.templateTypeOnce());
     QCOMPARE(loadedSettings.templateRunApp(), settings.templateRunApp());
+
     QCOMPARE(loadedSettings.openWithDefaultFileManager(), settings.openWithDefaultFileManager());
     QCOMPARE(loadedSettings.allSticky(), settings.allSticky());
+
     QCOMPARE(loadedSettings.searchNameCaseInsensitive(), settings.searchNameCaseInsensitive());
     QCOMPARE(loadedSettings.searchContentCaseInsensitive(), settings.searchContentCaseInsensitive());
     QCOMPARE(loadedSettings.searchNameRegexp(), settings.searchNameRegexp());
@@ -202,6 +268,8 @@ void TestSettingsFunctionality::testSettingsLoadSave() {
     QCOMPARE(loadedSettings.searchRecursive(), settings.searchRecursive());
     QCOMPARE(loadedSettings.searchhHidden(), settings.searchhHidden());
     QCOMPARE(loadedSettings.maxSearchHistory(), settings.maxSearchHistory());
+    QCOMPARE(loadedSettings.namePatterns(), settings.namePatterns());
+    QCOMPARE(loadedSettings.contentPatterns(), settings.contentPatterns());
 }
 
 QTEST_MAIN(TestSettingsFunctionality)

@@ -93,6 +93,7 @@ install(
 add_subdirectory(config)
 
 # Add tests if BUILD_TESTING is enabled
+option(BUILD_TESTING "Build test targets" OFF)
 include(CTest)
 if(BUILD_TESTING)
     enable_testing()

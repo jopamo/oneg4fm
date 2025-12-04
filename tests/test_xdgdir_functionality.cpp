@@ -4,6 +4,7 @@
  */
 
 #include <QDir>
+#include <QFile>
 #include <QObject>
 #include <QStandardPaths>
 #include <QString>
@@ -17,75 +18,66 @@ class TestXdgDirFunctionality : public QObject {
     Q_OBJECT
 
    private slots:
+    void initTestCase();
     void testReadDesktopDir();
     void testSetDesktopDir();
     void testXdgDirBasicFunctionality();
     void testXdgDirPathValidation();
+
+   private:
+    QTemporaryDir configDir_;
+    QString home_;
 };
 
+void TestXdgDirFunctionality::initTestCase() {
+    QVERIFY(configDir_.isValid());
+    home_ = QStandardPaths::writableLocation(QStandardPaths::HomeLocation);
+    qputenv("XDG_CONFIG_HOME", configDir_.path().toUtf8());
+    QFile::remove(configDir_.filePath(QStringLiteral("user-dirs.dirs")));
+}
+
 void TestXdgDirFunctionality::testReadDesktopDir() {
-    // Test that readDesktopDir returns a valid path
-    QString desktopDir = XdgDir::readDesktopDir();
+    const QString expectedDefault = home_ + QStringLiteral("/Desktop");
 
-    // Should not be empty
-    QVERIFY(!desktopDir.isEmpty());
-
-    // Should be a valid directory (or at least a valid path structure)
-    QVERIFY(desktopDir.contains(QDir::separator()) || desktopDir == QDir::homePath());
-
-    // Should be related to user's home directory or standard XDG locations
-    QVERIFY(desktopDir.contains(QDir::homePath()) || desktopDir.contains(QStringLiteral(".config")) ||
-            desktopDir.contains(QStringLiteral(".local")) || desktopDir.contains(QStringLiteral("Desktop")));
+    QCOMPARE(XdgDir::readDesktopDir(), expectedDefault);
 }
 
 void TestXdgDirFunctionality::testSetDesktopDir() {
-    // Create a temporary directory for testing
-    QTemporaryDir tempDir;
-    QVERIFY(tempDir.isValid());
+    const QString userDirsPath = configDir_.filePath(QStringLiteral("user-dirs.dirs"));
+    const QString testPath = home_ + QStringLiteral("/test-desktop");
 
-    QString testPath = tempDir.path() + QStringLiteral("/test-desktop");
-
-    // Test setting desktop directory
     XdgDir::setDesktopDir(testPath);
 
-    // Verify the directory was created
-    QVERIFY(QDir(testPath).exists());
+    QFile userDirs(userDirsPath);
+    QVERIFY(userDirs.open(QIODevice::ReadOnly));
+    const QString contents = QString::fromUtf8(userDirs.readAll());
+    QVERIFY(contents.contains(QStringLiteral("XDG_DESKTOP_DIR=\"$HOME/test-desktop\"")));
 
     // Verify we can read it back
-    QString readBackPath = XdgDir::readDesktopDir();
-
-    // The path should either be our test path or the original desktop path
-    // (setDesktopDir might not change the global state in a test environment)
-    QVERIFY(readBackPath == testPath || !readBackPath.isEmpty());
+    QCOMPARE(XdgDir::readDesktopDir(), testPath);
 }
 
 void TestXdgDirFunctionality::testXdgDirBasicFunctionality() {
-    // Test basic XDG directory functionality
+    const QString expectedPath = home_ + QStringLiteral("/basic-desktop");
+    XdgDir::setDesktopDir(expectedPath);
 
-    // Test that we can get a desktop directory multiple times consistently
-    QString desktop1 = XdgDir::readDesktopDir();
-    QString desktop2 = XdgDir::readDesktopDir();
+    const QString desktop1 = XdgDir::readDesktopDir();
+    const QString desktop2 = XdgDir::readDesktopDir();
 
+    QCOMPARE(desktop1, expectedPath);
     QCOMPARE(desktop1, desktop2);
-
-    // Test that the path is reasonable
-    QVERIFY(desktop1.length() > 0);
-    QVERIFY(desktop1 != QStringLiteral("/"));
-    QVERIFY(desktop1 != QStringLiteral(""));
+    QVERIFY(desktop1.startsWith(home_));
+    QVERIFY(!desktop1.isEmpty());
 }
 
 void TestXdgDirFunctionality::testXdgDirPathValidation() {
-    // Test various path validation scenarios
+    const QString expectedPath = home_ + QStringLiteral("/validated-desktop");
+    XdgDir::setDesktopDir(expectedPath);
 
-    QString desktopDir = XdgDir::readDesktopDir();
+    const QString desktopDir = XdgDir::readDesktopDir();
 
     // The path should not contain double slashes (except at the beginning)
-    QString doubleSlash = desktopDir + QStringLiteral("//");
     QVERIFY(!desktopDir.contains(QStringLiteral("//")));
-
-    // The path should end with a valid directory name, not a file
-    QVERIFY(!desktopDir.endsWith(QStringLiteral(".txt")));
-    QVERIFY(!desktopDir.endsWith(QStringLiteral(".conf")));
 
     // Should be an absolute path
     QVERIFY(QDir::isAbsolutePath(desktopDir));

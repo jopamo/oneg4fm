@@ -1,3 +1,8 @@
+/*
+ * POSIX-only archive extraction helpers built on libarchive
+ * src/core/archive_extract.cpp
+ */
+
 #include "archive_extract.h"
 
 #include "fs_ops.h"

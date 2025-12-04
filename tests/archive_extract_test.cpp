@@ -1,3 +1,8 @@
+/*
+ * Tests for archive extraction helpers
+ * tests/archive_extract_test.cpp
+ */
+
 #include <QTest>
 #include <QTemporaryDir>
 #include <QFile>
