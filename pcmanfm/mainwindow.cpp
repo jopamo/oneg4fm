@@ -167,6 +167,11 @@ MainWindow::MainWindow(Panel::FilePath path)
     // Create the path bar/location bar
     createPathBar(appSettings().pathBarButtons());
 
+    // Insert an expanding spacer to push subsequent items (like actionMenu) to the right
+    QWidget* spacer = new QWidget(this);
+    spacer->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
+    ui.toolBar->insertWidget(ui.actionMenu, spacer);
+
     setWindowTitle(QStringLiteral("PCManFM-Qt"));
 
     connect(ui.actionQuit, &QAction::triggered, qApp, &QApplication::quit);
