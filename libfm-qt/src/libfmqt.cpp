@@ -40,17 +40,11 @@ struct LibFmQtData {
 static LibFmQtData* theLibFmData = nullptr;
 
 extern "C" {
-
 GFile* _fm_vfs_search_new_for_uri(const char* uri);  // defined in vfs-search.c
-GFile* _fm_vfs_menu_new_for_uri(const char* uri);    // defined in vfs-menu.c
 }
 
 static GFile* lookupSearchUri(GVfs* /*vfs*/, const char* identifier, gpointer /*user_data*/) {
     return _fm_vfs_search_new_for_uri(identifier);
-}
-
-static GFile* lookupMenuUri(GVfs* /*vfs*/, const char* identifier, gpointer /*user_data*/) {
-    return _fm_vfs_menu_new_for_uri(identifier);
 }
 
 LibFmQtData::LibFmQtData() : refCount(1) {
@@ -68,15 +62,15 @@ LibFmQtData::LibFmQtData() : refCount(1) {
 
     // register some URI schemes implemented by libfm
     GVfs* vfs = g_vfs_get_default();
-    g_vfs_register_uri_scheme(vfs, "menu", lookupMenuUri, nullptr, nullptr, lookupMenuUri, nullptr, nullptr);
     g_vfs_register_uri_scheme(vfs, "search", lookupSearchUri, nullptr, nullptr, lookupSearchUri, nullptr, nullptr);
+
+    // Initialize the backend registry
 }
 
 LibFmQtData::~LibFmQtData() {
-    // _fm_file_finalize();
+    // Shutdown the backend registry (if needed, though standard C++ cleanup handles unique_ptrs)
 
     GVfs* vfs = g_vfs_get_default();
-    g_vfs_unregister_uri_scheme(vfs, "menu");
     g_vfs_unregister_uri_scheme(vfs, "search");
 }
 

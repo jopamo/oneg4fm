@@ -4,7 +4,6 @@ set(libfm_core_SRCS
     core/vfs/fm-file.h
     core/vfs/fm-xml-file.c
     core/vfs/fm-xml-file.h
-    core/vfs/vfs-menu.c
     core/vfs/vfs-search.c
     # other legacy C code
     core/legacy/fm-config.c
@@ -88,7 +87,6 @@ set(libfm_SRCS
     editbookmarksdialog.cpp
     execfiledialog.cpp
     appchoosercombobox.cpp
-    appmenuview.cpp
     appchooserdialog.cpp
     filesearchdialog.cpp
     filedialog.cpp
@@ -126,7 +124,6 @@ install(EXPORT
 target_link_libraries(${LIBFM_QT_LIBRARY_NAME}
     PRIVATE
         Qt6::GuiPrivate
-        menu-cache
     PUBLIC
         Qt6::Widgets
         ${GLIB_LIBRARIES}
@@ -147,7 +144,6 @@ target_include_directories(${LIBFM_QT_LIBRARY_NAME}
     PRIVATE "${Qt6Gui_PRIVATE_INCLUDE_DIRS}"
         core/legacy
         "${CMAKE_CURRENT_BINARY_DIR}"
-        "${CMAKE_BINARY_DIR}/menu-cache/include"
     PUBLIC
         "${GLIB_INCLUDE_DIRS}"
         "${GLIB_GIO_UNIX_INCLUDE_DIRS}"

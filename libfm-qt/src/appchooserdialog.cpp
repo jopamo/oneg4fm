@@ -31,12 +31,7 @@ AppChooserDialog::AppChooserDialog(std::shared_ptr<const Fm::MimeType> mimeType,
     : QDialog(parent, f), ui(new Ui::AppChooserDialog()), mimeType_{std::move(mimeType)}, canSetDefault_(true) {
     ui->setupUi(this);
 
-    connect(ui->appMenuView, &AppMenuView::selectionChanged, this, &AppChooserDialog::onSelectionChanged);
     connect(ui->tabWidget, &QTabWidget::currentChanged, this, &AppChooserDialog::onTabChanged);
-
-    if (!ui->appMenuView->isAppSelected()) {
-        ui->buttonBox->button(QDialogButtonBox::Ok)->setEnabled(false);  // disable OK button
-    }
 }
 
 AppChooserDialog::~AppChooserDialog() {
@@ -147,7 +142,6 @@ GAppInfo* AppChooserDialog::customCommandToApp() {
         /* FIXME: is there any better way to do this? */
         /* We need to ensure that no duplicated items are added */
         if (mimeType_) {
-            MenuCache* menu_cache;
             /* see if the command is already in the list of known apps for this mime-type */
             GList* apps = g_app_info_get_all_for_type(mimeType_->name());
             GList* l;
@@ -167,42 +161,6 @@ GAppInfo* AppChooserDialog::customCommandToApp() {
             if (app) {
                 goto _out;
             }
-
-            /* see if this command can be found in menu cache */
-            menu_cache = menu_cache_lookup("applications.menu");
-            if (menu_cache) {
-                MenuCacheDir* root_dir = menu_cache_dup_root_dir(menu_cache);
-                if (root_dir) {
-                    GSList* all_apps = menu_cache_list_all_apps(menu_cache);
-                    GSList* l;
-                    for (l = all_apps; l; l = l->next) {
-                        MenuCacheApp* ma = MENU_CACHE_APP(l->data);
-                        const char* exec = menu_cache_app_get_exec(ma);
-                        char* bin2;
-                        if (exec == nullptr) {
-                            g_warning("application %s has no Exec statement",
-                                      menu_cache_item_get_id(MENU_CACHE_ITEM(ma)));
-                            continue;
-                        }
-                        bin2 = get_binary(exec, nullptr);
-                        if (g_strcmp0(bin1, bin2) == 0) {
-                            app = G_APP_INFO(g_desktop_app_info_new(menu_cache_item_get_id(MENU_CACHE_ITEM(ma))));
-                            qDebug("found in menu cache");
-                            menu_cache_item_unref(MENU_CACHE_ITEM(ma));
-                            g_free(bin2);
-                            break;
-                        }
-                        menu_cache_item_unref(MENU_CACHE_ITEM(ma));
-                        g_free(bin2);
-                    }
-                    g_slist_free(all_apps);
-                    menu_cache_item_unref(MENU_CACHE_ITEM(root_dir));
-                }
-                menu_cache_unref(menu_cache);
-            }
-            if (app) {
-                goto _out;
-            }
         }
 
         /* FIXME: g_app_info_create_from_commandline force the use of %f or %u, so this is not we need */
@@ -218,12 +176,8 @@ GAppInfo* AppChooserDialog::customCommandToApp() {
 void AppChooserDialog::accept() {
     QDialog::accept();
 
-    if (ui->tabWidget->currentIndex() == 0) {
-        selectedApp_ = ui->appMenuView->selectedApp();
-    }
-    else {  // custom command line
-        selectedApp_ = customCommandToApp();
-    }
+    // custom command line
+    selectedApp_ = customCommandToApp();
 
     if (selectedApp_) {
         if (mimeType_ && g_app_info_get_name(selectedApp_.get())) {
@@ -242,13 +196,7 @@ void AppChooserDialog::accept() {
 }
 
 void AppChooserDialog::onSelectionChanged() {
-    if (ui->tabWidget->currentIndex() != 0) {
-        // the selection may be reset by menu-cache,
-        // while the app menu view is not shown
-        return;
-    }
-    bool isAppSelected = ui->appMenuView->isAppSelected();
-    ui->buttonBox->button(QDialogButtonBox::Ok)->setEnabled(isAppSelected);
+    // Deprecated
 }
 
 void AppChooserDialog::setMimeType(std::shared_ptr<const Fm::MimeType> mimeType) {
@@ -269,10 +217,7 @@ void AppChooserDialog::setCanSetDefault(bool value) {
 }
 
 void AppChooserDialog::onTabChanged(int index) {
-    if (index == 0) {  // app menu view
-        onSelectionChanged();
-    }
-    else if (index == 1) {  // custom command
+    if (index == 0) {  // custom command
         ui->buttonBox->button(QDialogButtonBox::Ok)->setEnabled(true);
     }
 }

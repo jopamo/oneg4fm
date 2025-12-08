@@ -31,16 +31,6 @@
      <property name="currentIndex">
       <number>0</number>
      </property>
-     <widget class="QWidget" name="tab">
-      <attribute name="title">
-       <string>Installed Applications</string>
-      </attribute>
-      <layout class="QVBoxLayout" name="verticalLayout">
-       <item>
-        <widget class="Fm::AppMenuView" name="appMenuView"/>
-       </item>
-      </layout>
-     </widget>
      <widget class="QWidget" name="tab_2">
       <attribute name="title">
        <string>Custom Command</string>
@@ -122,13 +112,6 @@
    </item>
   </layout>
  </widget>
- <customwidgets>
-  <customwidget>
-   <class>Fm::AppMenuView</class>
-   <extends>QTreeView</extends>
-   <header>appmenuview.h</header>
-  </customwidget>
- </customwidgets>
  <resources/>
  <connections>
   <connection>

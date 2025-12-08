@@ -54,7 +54,6 @@ if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
 endif()
 
 add_subdirectory(libfm)
-add_subdirectory(menu-cache)
 add_subdirectory(libfm-qt)
 add_subdirectory(pcmanfm)
 
