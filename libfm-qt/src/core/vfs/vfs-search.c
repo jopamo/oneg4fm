@@ -147,6 +147,10 @@ static GType fm_vfs_search_enumerator_get_type(void);
 
 G_DEFINE_TYPE(FmVfsSearchEnumerator, fm_vfs_search_enumerator, G_TYPE_FILE_ENUMERATOR)
 
+static void g_object_unref_func(gpointer obj, gpointer user_data) {
+    g_object_unref(obj);
+}
+
 static void _fm_vfs_search_enumerator_dispose(GObject* object) {
     FmVfsSearchEnumerator* priv = FM_VFS_SEACRH_ENUMERATOR(object);
     FmSearchIntIter* iter;
@@ -162,7 +166,7 @@ static void _fm_vfs_search_enumerator_dispose(GObject* object) {
     }
 
     if (priv->target_folders) {
-        g_slist_foreach(priv->target_folders, (GFunc)g_object_unref, NULL);
+        g_slist_foreach(priv->target_folders, g_object_unref_func, NULL);
         g_slist_free(priv->target_folders);
         priv->target_folders = NULL;
     }

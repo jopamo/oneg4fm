@@ -36,6 +36,10 @@
 #include <string.h>
 #include <gio/gdesktopappinfo.h>
 
+static void g_object_unref_func(gpointer obj, gpointer user_data) {
+    g_object_unref(obj);
+}
+
 static void append_file_to_cmd(GFile* gf, GString* cmd) {
     char* file = g_file_get_path(gf);
     char* quote;
@@ -436,7 +440,7 @@ gboolean fm_app_info_launch_uris(GAppInfo* appinfo, GList* uris, GAppLaunchConte
     gfiles = g_list_reverse(gfiles);
     ret = fm_app_info_launch(appinfo, gfiles, launch_context, error);
 
-    g_list_foreach(gfiles, (GFunc)g_object_unref, NULL);
+    g_list_foreach(gfiles, g_object_unref_func, NULL);
     g_list_free(gfiles);
     return ret;
 }

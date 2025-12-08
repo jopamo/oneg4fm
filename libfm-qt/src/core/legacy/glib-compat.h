@@ -49,16 +49,20 @@ G_BEGIN_DECLS
 
 /* This API was added in glib 2.28 */
 
-#define g_slist_free_full(slist, free_func)             \
-    {                                                   \
-        g_slist_foreach(slist, (GFunc)free_func, NULL); \
-        g_slist_free(slist);                            \
+static inline void compat_free_func_wrapper(gpointer data, gpointer free_func) {
+    ((void (*)(gpointer))free_func)(data);
+}
+
+#define g_slist_free_full(slist, free_func)                          \
+    {                                                                \
+        g_slist_foreach(slist, compat_free_func_wrapper, free_func); \
+        g_slist_free(slist);                                         \
     }
 
-#define g_list_free_full(list, free_func)             \
-    {                                                 \
-        g_list_foreach(list, (GFunc)free_func, NULL); \
-        g_list_free(list);                            \
+#define g_list_free_full(list, free_func)                          \
+    {                                                              \
+        g_list_foreach(list, compat_free_func_wrapper, free_func); \
+        g_list_free(list);                                         \
     }
 
 #endif
