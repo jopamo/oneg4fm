@@ -2,3 +2,7 @@ build*
 *.kdev4
 Testing/
 ctags*
+
+AGENTS.md
+CLAUDE.md
+GEMINI.md

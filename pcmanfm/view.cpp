@@ -36,6 +36,8 @@
 #include <QStringList>
 #include <QScrollBar>
 #include <QVBoxLayout>
+#include <QMimeDatabase>
+#include <QProcess>
 
 #include <string>
 #include <algorithm>
@@ -170,6 +172,15 @@ QModelIndexList indexesInRect(QAbstractItemView* view, const QRect& rect) {
     return result;
 }
 
+bool isTextFile(const std::shared_ptr<const Panel::FileInfo>& file) {
+    if (!file || file->isDir()) {
+        return false;
+    }
+    QMimeDatabase db;
+    auto mime = db.mimeTypeForName(file->mimeType()->name());
+    return mime.inherits(QStringLiteral("text/plain"));
+}
+
 }  // namespace
 
 void View::removeLibfmArchiverActions(Panel::FileMenu* menu) {
@@ -237,6 +248,35 @@ void View::onFileClicked(int type, const std::shared_ptr<const Panel::FileInfo>&
                     viewer->show();
                     return;
                 }
+            }
+        }
+
+        // Open non-binary (text) files in Texxy
+        bool allText = true;
+        for (const auto& file : files) {
+            if (!isTextFile(file)) {
+                allText = false;
+                break;
+            }
+        }
+
+        if (allText) {
+            QStringList paths;
+            bool allNative = true;
+            for (const auto& file : files) {
+                if (!file->isNative()) {
+                    allNative = false;
+                    break;
+                }
+                auto localPath = file->path().localPath();
+                if (localPath) {
+                    paths << QString::fromUtf8(localPath.get());
+                }
+            }
+
+            if (allNative && !paths.isEmpty()) {
+                QProcess::startDetached(QStringLiteral("texxy"), paths);
+                return;
             }
         }
 
@@ -659,10 +699,13 @@ void View::prepareFileMenu(Panel::FileMenu* menu) {
     bool anySymlink = false;
 
     auto files = menu->files();
+    bool allText = !files.empty();
+
     for (auto& fi : files) {
         if (!fi) {
             allNative = false;
             allDirectory = false;
+            allText = false;
             continue;
         }
 
@@ -680,6 +723,28 @@ void View::prepareFileMenu(Panel::FileMenu* menu) {
         if (!fi->isNative()) {
             allNative = false;
         }
+
+        if (!isTextFile(fi)) {
+            allText = false;
+        }
+    }
+
+    if (allText && allNative) {
+        auto* action = new QAction(QIcon::fromTheme(QStringLiteral("texxy")), tr("Open in Texxy"), menu);
+
+        QStringList paths;
+        for (const auto& fi : files) {
+            if (auto local = fi->path().localPath()) {
+                paths << QString::fromUtf8(local.get());
+            }
+        }
+
+        connect(action, &QAction::triggered, this,
+                [paths] { QProcess::startDetached(QStringLiteral("texxy"), paths); });
+
+        QAction* firstAction = menu->actions().value(0);
+        menu->insertAction(firstAction, action);
+        menu->insertSeparator(firstAction);
     }
 
     const bool allFiles = !files.empty() && !hasDirectory;

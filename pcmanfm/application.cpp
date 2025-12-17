@@ -46,6 +46,8 @@
 #include "preferencesdialog.h"
 #include "xdgdir.h"
 #include "../src/ui/fsqt.h"
+#include "../src/ui/filepropertiesdialog.h"
+#include "../src/backends/qt/qt_fileinfo.h"
 
 namespace PCManFM {
 
@@ -660,7 +662,10 @@ void Application::onPropJobFinished() {
     }
 
     for (auto file : job->files()) {
-        auto* dialog = Panel::FilePropsDialog::showForFile(std::move(file));
+        auto qtInfo = std::make_shared<QtFileInfo>(QString::fromUtf8(file->path().toString().get()));
+        auto* dialog = new FilePropertiesDialog(qtInfo);
+        dialog->setAttribute(Qt::WA_DeleteOnClose);
+        dialog->show();
         dialog->raise();
         dialog->activateWindow();
     }

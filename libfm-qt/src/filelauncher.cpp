@@ -20,6 +20,7 @@
 #include "filelauncher.h"
 #include "applaunchcontext.h"
 #include <QMessageBox>
+#include <QPushButton>
 #include <QDebug>
 #include "execfiledialog_p.h"
 #include "appchooserdialog.h"
@@ -65,9 +66,26 @@ void FileLauncher::launchedFiles(const FileInfoList& /*files*/) const {}
 
 void FileLauncher::launchedPaths(const FilePathList& /*paths*/) const {}
 
-int FileLauncher::ask(const char* /*msg*/, char* const* /*btn_labels*/, int /*default_btn*/) {
-    /* FIXME: set default button properly */
-    // return fm_askv(data->parent, nullptr, msg, btn_labels);
+int FileLauncher::ask(const char* msg, char* const* btn_labels, int default_btn) {
+    if (!msg || !btn_labels) {
+        return -1;
+    }
+    QMessageBox dlg(QMessageBox::Question, QObject::tr("Question"), QString::fromUtf8(msg));
+    QVector<QPushButton*> buttons;
+    for (int i = 0; btn_labels[i]; ++i) {
+        buttons.push_back(dlg.addButton(QString::fromUtf8(btn_labels[i]), QMessageBox::ActionRole));
+    }
+
+    if (default_btn >= 0 && default_btn < buttons.size()) {
+        dlg.setDefaultButton(buttons[default_btn]);
+    }
+
+    execModelessDialog(&dlg);
+
+    QAbstractButton* clicked = dlg.clickedButton();
+    if (clicked) {
+        return buttons.indexOf(static_cast<QPushButton*>(clicked));
+    }
     return -1;
 }
 
