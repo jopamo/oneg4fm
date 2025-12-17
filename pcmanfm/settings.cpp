@@ -160,10 +160,36 @@ bool Settings::loadFile(QString filePath) {
     settings.beginGroup(QStringLiteral("System"));
     fallbackIconThemeName_ = settings.value(QStringLiteral("FallbackIconThemeName")).toString();
     if (fallbackIconThemeName_.isEmpty()) {
-        // FIXME: we should choose one from installed icon themes or get
-        // the value from XSETTINGS instead of hard code a fallback value.
-        // Use Papirus-Dark as fallback icon theme
-        fallbackIconThemeName_ = QLatin1String("Papirus-Dark");  // fallback icon theme name
+        // Use Papirus-Dark as fallback icon theme if available
+        fallbackIconThemeName_ = QLatin1String("Papirus-Dark");
+
+        // Check if Papirus-Dark is actually installed
+        bool papirusInstalled = false;
+        const QStringList paths = QIcon::themeSearchPaths();
+        for (const QString& path : paths) {
+            if (QDir(path).exists(fallbackIconThemeName_)) {
+                papirusInstalled = true;
+                break;
+            }
+        }
+
+        if (!papirusInstalled) {
+            // Try to find any other installed theme
+            for (const QString& path : paths) {
+                QDir dir(path);
+                const QStringList themes = dir.entryList(QDir::Dirs | QDir::NoDotAndDotDot);
+                for (const QString& theme : themes) {
+                    if (theme != QLatin1String("hicolor") && theme != QLatin1String("locolor")) {
+                        fallbackIconThemeName_ = theme;
+                        papirusInstalled = true;  // Found something
+                        break;
+                    }
+                }
+                if (papirusInstalled) {
+                    break;
+                }
+            }
+        }
     }
     setTerminal(settings.value(QStringLiteral("Terminal"), QStringLiteral("xterm")).toString());
     setArchiver(settings.value(QStringLiteral("Archiver"), QStringLiteral("file-roller")).toString());

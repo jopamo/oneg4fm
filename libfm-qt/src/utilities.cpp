@@ -38,6 +38,8 @@
 #include <grp.h>
 #include <cstdlib>
 #include <glib.h>
+#include <unistd.h>
+#include <vector>
 
 namespace Fm {
 
@@ -330,9 +332,16 @@ uid_t uidFromName(QString name) {
         ret = uid_t(name.toUInt());
     }
     else {
-        struct passwd* pw = getpwnam(name.toLatin1().constData());
-        // FIXME: use getpwnam_r instead later to make it reentrant
-        ret = pw ? pw->pw_uid : INVALID_UID;
+        struct passwd pw;
+        struct passwd* result = nullptr;
+        long bufsize = sysconf(_SC_GETPW_R_SIZE_MAX);
+        if (bufsize == -1) {
+            bufsize = 16384;
+        }
+        std::vector<char> buf(bufsize);
+
+        getpwnam_r(name.toLatin1().constData(), &pw, buf.data(), bufsize, &result);
+        ret = result ? result->pw_uid : INVALID_UID;
     }
 
     return ret;
@@ -361,9 +370,16 @@ gid_t gidFromName(QString name) {
         ret = gid_t(name.toUInt());
     }
     else {
-        // FIXME: use getgrnam_r instead later to make it reentrant
-        struct group* grp = getgrnam(name.toLatin1().constData());
-        ret = grp ? grp->gr_gid : INVALID_GID;
+        struct group grp;
+        struct group* result = nullptr;
+        long bufsize = sysconf(_SC_GETGR_R_SIZE_MAX);
+        if (bufsize == -1) {
+            bufsize = 16384;
+        }
+        std::vector<char> buf(bufsize);
+
+        getgrnam_r(name.toLatin1().constData(), &grp, buf.data(), bufsize, &result);
+        ret = result ? result->gr_gid : INVALID_GID;
     }
 
     return ret;

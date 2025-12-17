@@ -68,6 +68,7 @@ class LIBFM_QT_API RenameDialog : public QDialog {
     bool applyToAll_;
     QString oldName_;
     QString newName_;
+    FilePath parentPath_;
 };
 
 }  // namespace Fm

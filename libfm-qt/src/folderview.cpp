@@ -1044,7 +1044,7 @@ void FolderView::setViewMode(ViewMode _mode) {
     // all use QListView, it's wise to preserve QListView when possible.
     bool recreateView = false;
     if (view && (mode == DetailedListMode || _mode == DetailedListMode)) {
-        delete view;  // FIXME: no virtual dtor?
+        delete view;
         view = nullptr;
         recreateView = true;
     }

@@ -22,6 +22,7 @@
 #include <QStringBuilder>
 #include <QPushButton>
 #include <QDateTime>
+#include <gio/gio.h>
 
 #include "core/iconinfo.h"
 #include "utilities.h"
@@ -74,6 +75,7 @@ RenameDialog::RenameDialog(const FileInfo& src, const FileInfo& dest, QWidget* p
     ui->destInfo->setText(infoStr);
 
     auto basename = path.baseName();
+    parentPath_ = path.parent();
     ui->fileName->setText(QString::fromUtf8(basename.get()));
     int length = ui->fileName->text().lastIndexOf(QStringLiteral("."));
     if (length > 0 && length < ui->fileName->text().size() - 1) {
@@ -135,8 +137,24 @@ void RenameDialog::reject() {
 
 void RenameDialog::onFileNameChanged(QString newName) {
     newName_ = newName;
-    // FIXME: check if the name already exists in the current dir
     bool hasNewName = (newName_ != oldName_);
+
+    if (hasNewName && parentPath_.isValid()) {
+        auto newPath = parentPath_.child(newName_.toLocal8Bit().constData());
+        if (newPath.isValid() && g_file_query_exists(newPath.gfile().get(), nullptr)) {
+            ui->fileName->setStyleSheet(QStringLiteral("background-color: #ffcccc; color: black"));
+            ui->fileName->setToolTip(tr("File name already exists"));
+        }
+        else {
+            ui->fileName->setStyleSheet(QString());
+            ui->fileName->setToolTip(QString());
+        }
+    }
+    else {
+        ui->fileName->setStyleSheet(QString());
+        ui->fileName->setToolTip(QString());
+    }
+
     renameButton_->setEnabled(hasNewName);
     renameButton_->setDefault(hasNewName);
 
