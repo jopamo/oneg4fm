@@ -160,7 +160,9 @@ bool fillBufferFromWand(MagickWand* wand, ImageMagickBuffer& out) {
         return false;
     }
 
-    MagickSetImageAlphaChannel(wand, ActivateAlphaChannel);
+    if (MagickGetImageAlphaChannel(wand) == MagickFalse) {
+        MagickSetImageAlphaChannel(wand, OpaqueAlphaChannel);
+    }
     MagickSetImageType(wand, TrueColorAlphaType);
 
     const size_t channels = 4;

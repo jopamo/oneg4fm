@@ -158,3 +158,22 @@ pcmanfm_add_test(pcmanfm-qt-xdgdir-functionality-tests
     INCLUDES
         ${BLAKE3_INCLUDE_DIRS}
 )
+
+find_package(PkgConfig QUIET)
+if(PKG_CONFIG_FOUND)
+    pkg_check_modules(MAGICKWAND MagickWand)
+endif()
+
+if(MAGICKWAND_FOUND)
+    pcmanfm_add_test(pcmanfm-qt-imagemagick-tests
+        SOURCES
+            test_imagemagick.cpp
+            ../pcmanfm/imagemagick_support.cpp
+        LIBS
+            ${MAGICKWAND_LIBRARIES}
+        INCLUDES
+            ${MAGICKWAND_INCLUDE_DIRS}
+    )
+    target_compile_definitions(pcmanfm-qt-imagemagick-tests PRIVATE HAVE_MAGICKWAND)
+    target_compile_options(pcmanfm-qt-imagemagick-tests PRIVATE ${MAGICKWAND_CFLAGS_OTHER})
+endif()
