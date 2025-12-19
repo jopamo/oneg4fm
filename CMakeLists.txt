@@ -87,7 +87,6 @@ endif()
 install(
     FILES
         icons/pcmanfm-qt.svg
-        icons/texxy.svg
     DESTINATION "${CMAKE_INSTALL_PREFIX}/share/icons/hicolor/scalable/apps"
 )
 
