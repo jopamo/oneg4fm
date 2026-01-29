@@ -252,10 +252,4 @@ void MainWindow::on_actionFolderFirst_triggered(bool checked) {
     }
 }
 
-void MainWindow::on_actionHiddenLast_triggered(bool checked) {
-    if (auto* page = currentPage()) {
-        page->setSortHiddenLast(checked);
-    }
-}
-
 }  // namespace PCManFM

@@ -43,7 +43,6 @@ void TestSettingsFunctionality::testSettingsInitialization() {
     QCOMPARE(settings.sortOrder(), Qt::AscendingOrder);
     QCOMPARE(settings.sortColumn(), Panel::FolderModel::ColumnFileName);
     QVERIFY(settings.sortFolderFirst());
-    QVERIFY(!settings.sortHiddenLast());
     QVERIFY(!settings.sortCaseSensitive());
     QVERIFY(!settings.showFilter());
     QVERIFY(settings.pathBarButtons());
@@ -170,7 +169,6 @@ void TestSettingsFunctionality::testSettingsLoadSave() {
     settings.setSortOrder(Qt::DescendingOrder);
     settings.setSortColumn(Panel::FolderModel::ColumnFileSize);
     settings.setSortFolderFirst(false);
-    settings.setSortHiddenLast(true);
     settings.setSortCaseSensitive(true);
     settings.setShowFilter(true);
 
@@ -235,7 +233,6 @@ void TestSettingsFunctionality::testSettingsLoadSave() {
     QCOMPARE(loadedSettings.sortOrder(), settings.sortOrder());
     QCOMPARE(loadedSettings.sortColumn(), settings.sortColumn());
     QCOMPARE(loadedSettings.sortFolderFirst(), settings.sortFolderFirst());
-    QCOMPARE(loadedSettings.sortHiddenLast(), settings.sortHiddenLast());
     QCOMPARE(loadedSettings.sortCaseSensitive(), settings.sortCaseSensitive());
     QCOMPARE(loadedSettings.showFilter(), settings.showFilter());
 

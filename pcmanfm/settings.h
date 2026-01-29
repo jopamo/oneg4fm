@@ -39,7 +39,6 @@ class FolderSettings {
           viewMode_(Panel::FolderView::IconMode),
           showHidden_(false),
           sortFolderFirst_(true),
-          sortHiddenLast_(false),
           sortCaseSensitive_(true),
           recursive_(false) {}
 
@@ -70,10 +69,6 @@ class FolderSettings {
 
     void setSortFolderFirst(bool value) { sortFolderFirst_ = value; }
 
-    bool sortHiddenLast() const { return sortHiddenLast_; }
-
-    void setSortHiddenLast(bool value) { sortHiddenLast_ = value; }
-
     bool showHidden() const { return showHidden_; }
 
     void setShowHidden(bool value) { showHidden_ = value; }
@@ -97,7 +92,6 @@ class FolderSettings {
     Panel::FolderView::ViewMode viewMode_;
     bool showHidden_;
     bool sortFolderFirst_;
-    bool sortHiddenLast_;
     bool sortCaseSensitive_;
     bool recursive_;
     Panel::FilePath inheritedPath_;
@@ -282,10 +276,6 @@ class Settings : public QObject {
     bool sortFolderFirst() const { return sortFolderFirst_; }
 
     void setSortFolderFirst(bool folderFirst) { sortFolderFirst_ = folderFirst; }
-
-    bool sortHiddenLast() const { return sortHiddenLast_; }
-
-    void setSortHiddenLast(bool hiddenLast) { sortHiddenLast_ = hiddenLast; }
 
     bool showFilter() const { return showFilter_; }
 
@@ -558,7 +548,6 @@ class Settings : public QObject {
     Qt::SortOrder sortOrder_;
     Panel::FolderModel::ColumnId sortColumn_;
     bool sortFolderFirst_;
-    bool sortHiddenLast_;
     bool sortCaseSensitive_;
     bool showFilter_;
     bool pathBarButtons_;

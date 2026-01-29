@@ -93,7 +93,6 @@ void TestSettings::testFolderSettings() {
     QCOMPARE(settings.viewMode(), Fm::FolderView::IconMode);
     QVERIFY(!settings.showHidden());
     QVERIFY(settings.sortFolderFirst());
-    QVERIFY(!settings.sortHiddenLast());
     QVERIFY(settings.sortCaseSensitive());
     QVERIFY(!settings.recursive());
 
@@ -115,9 +114,6 @@ void TestSettings::testFolderSettings() {
 
     settings.setSortFolderFirst(false);
     QVERIFY(!settings.sortFolderFirst());
-
-    settings.setSortHiddenLast(true);
-    QVERIFY(settings.sortHiddenLast());
 
     settings.setSortCaseSensitive(false);
     QVERIFY(!settings.sortCaseSensitive());

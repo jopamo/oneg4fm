@@ -181,7 +181,6 @@ void MainWindow::updateViewMenuForCurrentPage() {
 
         ui.actionCaseSensitive->setChecked(tabPage->sortCaseSensitive());
         ui.actionFolderFirst->setChecked(tabPage->sortFolderFirst());
-        ui.actionHiddenLast->setChecked(tabPage->sortHiddenLast());
     }
 
     updatingViewMenu_ = false;

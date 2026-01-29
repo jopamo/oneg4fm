@@ -671,7 +671,6 @@ void TabPage::chdir(Panel::FilePath newPath, bool addHistory) {
     // set sorting
     proxyModel_->sort(folderSettings_.sortColumn(), folderSettings_.sortOrder());
     proxyModel_->setFolderFirst(folderSettings_.sortFolderFirst());
-    proxyModel_->setHiddenLast(folderSettings_.sortHiddenLast());
     proxyModel_->setShowHidden(folderSettings_.showHidden());
     proxyModel_->setSortCaseSensitivity(folderSettings_.sortCaseSensitive() ? Qt::CaseSensitive : Qt::CaseInsensitive);
     proxyModel_->setSourceModel(folderModel_);
@@ -847,12 +846,6 @@ void TabPage::setSortFolderFirst(bool value) {
     }
 }
 
-void TabPage::setSortHiddenLast(bool value) {
-    if (proxyModel_) {
-        proxyModel_->setHiddenLast(value);
-    }
-}
-
 void TabPage::setSortCaseSensitive(bool value) {
     if (proxyModel_) {
         proxyModel_->setSortCaseSensitivity(value ? Qt::CaseSensitive : Qt::CaseInsensitive);
@@ -884,7 +877,6 @@ void TabPage::saveFolderSorting() {
                                                 : Panel::FolderModel::ColumnFileName;
     folderSettings_.setSortColumn(columnId);
     folderSettings_.setSortFolderFirst(proxyModel_->folderFirst());
-    folderSettings_.setSortHiddenLast(proxyModel_->hiddenLast());
     folderSettings_.setSortCaseSensitive(proxyModel_->sortCaseSensitivity());
 
     if (folderSettings_.showHidden() != proxyModel_->showHidden()) {
@@ -976,7 +968,6 @@ void TabPage::setCustomizedView(bool value, bool recursive) {
         setShowHidden(folderSettings_.showHidden());
         setSortCaseSensitive(folderSettings_.sortCaseSensitive());
         setSortFolderFirst(folderSettings_.sortFolderFirst());
-        setSortHiddenLast(folderSettings_.sortHiddenLast());
         sort(folderSettings_.sortColumn(), folderSettings_.sortOrder());
         setViewMode(folderSettings_.viewMode());
     }

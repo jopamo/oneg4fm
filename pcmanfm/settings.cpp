@@ -62,7 +62,6 @@ Settings::Settings()
       sortOrder_(Qt::AscendingOrder),
       sortColumn_(Panel::FolderModel::ColumnFileName),
       sortFolderFirst_(true),
-      sortHiddenLast_(false),
       sortCaseSensitive_(false),
       showFilter_(false),
       pathBarButtons_(true),
@@ -234,7 +233,6 @@ bool Settings::loadFile(QString filePath) {
     sortOrder_ = FolderSettings::sortOrderFromString(settings.value(QStringLiteral("SortOrder")).toString());
     sortColumn_ = FolderSettings::sortColumnFromString(settings.value(QStringLiteral("SortColumn")).toString());
     sortFolderFirst_ = settings.value(QStringLiteral("SortFolderFirst"), true).toBool();
-    sortHiddenLast_ = settings.value(QStringLiteral("SortHiddenLast"), false).toBool();
     sortCaseSensitive_ = settings.value(QStringLiteral("SortCaseSensitive"), false).toBool();
     showFilter_ = settings.value(QStringLiteral("ShowFilter"), false).toBool();
 
@@ -347,12 +345,11 @@ bool Settings::saveFile(QString filePath) {
     settings.endGroup();
 
     settings.beginGroup(QStringLiteral("FolderView"));
-    settings.setValue(QStringLiteral("Mode"), QString::fromUtf8(viewModeToString(viewMode_)));
+    settings.setValue(QStringLiteral("Mode"), Settings::viewModeToString(viewMode_));
     settings.setValue(QStringLiteral("ShowHidden"), showHidden_);
-    settings.setValue(QStringLiteral("SortOrder"), QString::fromUtf8(sortOrderToString(sortOrder_)));
-    settings.setValue(QStringLiteral("SortColumn"), QString::fromUtf8(sortColumnToString(sortColumn_)));
+    settings.setValue(QStringLiteral("SortOrder"), Settings::sortOrderToString(sortOrder_));
+    settings.setValue(QStringLiteral("SortColumn"), Settings::sortColumnToString(sortColumn_));
     settings.setValue(QStringLiteral("SortFolderFirst"), sortFolderFirst_);
-    settings.setValue(QStringLiteral("SortHiddenLast"), sortHiddenLast_);
     settings.setValue(QStringLiteral("SortCaseSensitive"), sortCaseSensitive_);
     settings.setValue(QStringLiteral("ShowFilter"), showFilter_);
 
@@ -709,7 +706,6 @@ FolderSettings Settings::loadFolderSettings(const Panel::FilePath& path) const {
         settings.setViewMode(viewMode());
         settings.setShowHidden(showHidden());
         settings.setSortFolderFirst(sortFolderFirst());
-        settings.setSortHiddenLast(sortHiddenLast());
         settings.setSortCaseSensitive(sortCaseSensitive());
     }
     else {
@@ -752,11 +748,6 @@ FolderSettings Settings::loadFolderSettings(const Panel::FilePath& path) const {
             settings.setSortFolderFirst(folder_first);
         }
 
-        bool hidden_last;
-        if (cfg.getBoolean("SortHiddenLast", &hidden_last)) {
-            settings.setSortHiddenLast(hidden_last);
-        }
-
         bool case_sensitive;
         if (cfg.getBoolean("SortCaseSensitive", &case_sensitive)) {
             settings.setSortCaseSensitive(case_sensitive);
@@ -783,7 +774,6 @@ void Settings::saveFolderSettings(const Panel::FilePath& path, const FolderSetti
         cfg.setString("ViewMode", viewModeToString(settings.viewMode()));
         cfg.setBoolean("ShowHidden", settings.showHidden());
         cfg.setBoolean("SortFolderFirst", settings.sortFolderFirst());
-        cfg.setBoolean("SortHiddenLast", settings.sortHiddenLast());
         cfg.setBoolean("SortCaseSensitive", settings.sortCaseSensitive());
         cfg.setBoolean("Recursive", settings.recursive());
     }

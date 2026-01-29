@@ -112,9 +112,6 @@ class TabPage : public QWidget {
     bool sortFolderFirst() { return folderSettings_.sortFolderFirst(); }
     void setSortFolderFirst(bool value);
 
-    bool sortHiddenLast() { return folderSettings_.sortHiddenLast(); }
-    void setSortHiddenLast(bool value);
-
     bool sortCaseSensitive() { return folderSettings_.sortCaseSensitive(); }
 
     void setSortCaseSensitive(bool value);
