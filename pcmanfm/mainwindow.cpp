@@ -75,6 +75,7 @@ MainWindow::MainWindow(Panel::FilePath path)
     fsInfoLabel_->setVisible(false);
 
     if (ui.statusbar) {
+        ui.statusbar->setSizeGripEnabled(true);
         ui.statusbar->addPermanentWidget(fsInfoLabel_);
 
         if (geteuid() == 0) {
