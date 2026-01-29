@@ -106,10 +106,14 @@ void MainWindow::on_actionThumbnailView_triggered() {
 //-----------------------------------------------------------------------------
 
 void MainWindow::on_actionShowHidden_triggered(bool checked) {
-    if (auto* page = currentPage()) {
+    appSettings().setShowHidden(checked);
+    forEachTabPageGlobal([checked](MainWindow* mw, TabPage* page) {
+        mw->ui.actionShowHidden->setChecked(checked);
         page->setShowHidden(checked);
-        // visibility of hidden folders in directory tree is toggled by onTabPageSortFilterChanged()
-    }
+        if (mw->currentPage() == page && mw->ui.sidePane) {
+            mw->ui.sidePane->setShowHidden(checked);
+        }
+    });
 }
 
 void MainWindow::on_actionShowThumbnails_triggered(bool checked) {
