@@ -143,6 +143,9 @@ void AutoRunDialog::openInFileManager(GFile* mountRoot) {
     // open the path in a new main window using the configured initial geometry
     auto* win = new MainWindow(path);
     win->resize(settings.windowWidth(), settings.windowHeight());
+    if (settings.windowX() != -1 && settings.windowY() != -1) {
+        win->move(settings.windowX(), settings.windowY());
+    }
 
     win->show();
 }

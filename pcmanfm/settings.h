@@ -199,6 +199,9 @@ class Settings : public QObject {
         }
     }
 
+    int windowX() const { return lastWindowX_; }
+    int windowY() const { return lastWindowY_; }
+
     bool windowMaximized() const {
         if (rememberWindowSize_) {
             return lastWindowMaximized_;
@@ -219,6 +222,9 @@ class Settings : public QObject {
     void setLastWindowWidth(int lastWindowWidth) { lastWindowWidth_ = lastWindowWidth; }
 
     void setLastWindowHeight(int lastWindowHeight) { lastWindowHeight_ = lastWindowHeight; }
+
+    void setLastWindowX(int x) { lastWindowX_ = x; }
+    void setLastWindowY(int y) { lastWindowY_ = y; }
 
     void setLastWindowMaximized(bool lastWindowMaximized) { lastWindowMaximized_ = lastWindowMaximized; }
 
@@ -536,6 +542,8 @@ class Settings : public QObject {
     int fixedWindowHeight_;
     int lastWindowWidth_;
     int lastWindowHeight_;
+    int lastWindowX_;
+    int lastWindowY_;
     bool lastWindowMaximized_;
     int splitterPos_;
     bool sidePaneVisible_;

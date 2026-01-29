@@ -213,6 +213,9 @@ void MainWindow::on_actionNewWin_triggered() {
     auto* win = new MainWindow(path);
     Settings& settings = appSettings();
     win->resize(settings.windowWidth(), settings.windowHeight());
+    if (settings.windowX() != -1 && settings.windowY() != -1) {
+        win->move(settings.windowX(), settings.windowY());
+    }
     win->show();
 }
 

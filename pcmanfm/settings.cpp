@@ -51,6 +51,8 @@ Settings::Settings()
       fixedWindowHeight_(480),
       lastWindowWidth_(640),
       lastWindowHeight_(480),
+      lastWindowX_(-1),
+      lastWindowY_(-1),
       lastWindowMaximized_(false),
       splitterPos_(120),
       sidePaneVisible_(true),
@@ -270,6 +272,8 @@ bool Settings::loadFile(QString filePath) {
     fixedWindowHeight_ = settings.value(QStringLiteral("FixedHeight"), 480).toInt();
     lastWindowWidth_ = settings.value(QStringLiteral("LastWindowWidth"), 640).toInt();
     lastWindowHeight_ = settings.value(QStringLiteral("LastWindowHeight"), 480).toInt();
+    lastWindowX_ = settings.value(QStringLiteral("LastWindowX"), -1).toInt();
+    lastWindowY_ = settings.value(QStringLiteral("LastWindowY"), -1).toInt();
     lastWindowMaximized_ = settings.value(QStringLiteral("LastWindowMaximized"), false).toBool();
     rememberWindowSize_ = settings.value(QStringLiteral("RememberWindowSize"), true).toBool();
     alwaysShowTabs_ = settings.value(QStringLiteral("AlwaysShowTabs"), true).toBool();
@@ -389,6 +393,8 @@ bool Settings::saveFile(QString filePath) {
     settings.setValue(QStringLiteral("FixedHeight"), fixedWindowHeight_);
     settings.setValue(QStringLiteral("LastWindowWidth"), lastWindowWidth_);
     settings.setValue(QStringLiteral("LastWindowHeight"), lastWindowHeight_);
+    settings.setValue(QStringLiteral("LastWindowX"), lastWindowX_);
+    settings.setValue(QStringLiteral("LastWindowY"), lastWindowY_);
     settings.setValue(QStringLiteral("LastWindowMaximized"), lastWindowMaximized_);
     settings.setValue(QStringLiteral("RememberWindowSize"), rememberWindowSize_);
     settings.setValue(QStringLiteral("AlwaysShowTabs"), alwaysShowTabs_);

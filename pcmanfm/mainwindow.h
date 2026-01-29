@@ -222,6 +222,7 @@ class MainWindow : public QMainWindow {
     void closeTab(int index, ViewFrame* viewFrame);
     void closeTab(int index) { closeTab(index, activeViewFrame_); }
     virtual void resizeEvent(QResizeEvent* event) override;
+    virtual void moveEvent(QMoveEvent* event) override;
     virtual void closeEvent(QCloseEvent* event) override;
     virtual void dragEnterEvent(QDragEnterEvent* event) override;
     virtual void dropEvent(QDropEvent* event) override;

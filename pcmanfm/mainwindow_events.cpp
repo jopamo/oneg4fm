@@ -11,6 +11,7 @@
 #include <QCloseEvent>
 #include <QEvent>
 #include <QKeyEvent>
+#include <QMoveEvent>
 #include <QResizeEvent>
 #include <QSplitter>
 #include <QStackedWidget>
@@ -166,6 +167,20 @@ void MainWindow::resizeEvent(QResizeEvent* event) {
         if (!isMaximized()) {
             settings.setLastWindowWidth(width());
             settings.setLastWindowHeight(height());
+            settings.setLastWindowX(x());
+            settings.setLastWindowY(y());
+        }
+    }
+}
+
+void MainWindow::moveEvent(QMoveEvent* event) {
+    QMainWindow::moveEvent(event);
+
+    Settings& settings = appSettings();
+    if (settings.rememberWindowSize()) {
+        if (!isMaximized()) {
+            settings.setLastWindowX(x());
+            settings.setLastWindowY(y());
         }
     }
 }
@@ -184,6 +199,8 @@ void MainWindow::closeEvent(QCloseEvent* event) {
         if (!isMaximized()) {
             settings.setLastWindowWidth(width());
             settings.setLastWindowHeight(height());
+            settings.setLastWindowX(x());
+            settings.setLastWindowY(y());
         }
     }
 

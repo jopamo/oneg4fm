@@ -620,6 +620,9 @@ void Application::ShowItems(const QStringList& uriList, const QString& startupId
     if (window == nullptr) {
         window = new MainWindow();
         window->resize(settings_.windowWidth(), settings_.windowHeight());
+        if (settings_.windowX() != -1 && settings_.windowY() != -1) {
+            window->move(settings_.windowX(), settings_.windowY());
+        }
     }
 
     for (const auto& folder : folders) {
