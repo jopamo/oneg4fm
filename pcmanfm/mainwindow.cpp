@@ -213,9 +213,6 @@ void MainWindow::on_actionNewWin_triggered() {
     auto* win = new MainWindow(path);
     Settings& settings = appSettings();
     win->resize(settings.windowWidth(), settings.windowHeight());
-    if (settings.windowMaximized()) {
-        win->setWindowState(win->windowState() | Qt::WindowMaximized);
-    }
     win->show();
 }
 

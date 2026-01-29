@@ -70,10 +70,6 @@ bool Launcher::openFolder(GAppLaunchContext* ctx, const Panel::FileInfoList& fol
         // Fall back to opening a new PCManFM-Qt main window
         mainWindow = new MainWindow(std::move(firstPath));
         mainWindow->resize(settings.windowWidth(), settings.windowHeight());
-
-        if (settings.windowMaximized()) {
-            mainWindow->setWindowState(mainWindow->windowState() | Qt::WindowMaximized);
-        }
     }
     else {
         // We already have a main window, either reuse the current tab or open a new one

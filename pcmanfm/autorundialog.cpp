@@ -144,10 +144,6 @@ void AutoRunDialog::openInFileManager(GFile* mountRoot) {
     auto* win = new MainWindow(path);
     win->resize(settings.windowWidth(), settings.windowHeight());
 
-    if (settings.windowMaximized()) {
-        win->setWindowState(win->windowState() | Qt::WindowMaximized);
-    }
-
     win->show();
 }
 

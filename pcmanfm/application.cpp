@@ -620,9 +620,6 @@ void Application::ShowItems(const QStringList& uriList, const QString& startupId
     if (window == nullptr) {
         window = new MainWindow();
         window->resize(settings_.windowWidth(), settings_.windowHeight());
-        if (settings_.windowMaximized()) {
-            window->setWindowState(window->windowState() | Qt::WindowMaximized);
-        }
     }
 
     for (const auto& folder : folders) {
