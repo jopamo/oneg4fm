@@ -47,6 +47,29 @@ constexpr size_t kMaxDecodedDimension = 16384;
 constexpr size_t kMaxDecodedPixels = 64ULL * 1024ULL * 1024ULL;
 constexpr size_t kRgbaChannels = 4;
 
+bool imageInputStatIsSafe(const struct stat& st) {
+    return S_ISREG(st.st_mode) && st.st_size > 0 && st.st_size <= kMaxImageInputBytes;
+}
+
+bool statPathNoFollow(const QByteArray& encodedPath, struct stat& st) {
+#if defined(AT_FDCWD) && defined(AT_SYMLINK_NOFOLLOW)
+    return ::fstatat(AT_FDCWD, encodedPath.constData(), &st, AT_SYMLINK_NOFOLLOW) == 0;
+#else
+    return ::lstat(encodedPath.constData(), &st) == 0;
+#endif
+}
+
+int safeImageOpenFlags() {
+    int flags = O_RDONLY | O_CLOEXEC;
+#ifdef O_NOFOLLOW
+    flags |= O_NOFOLLOW;
+#endif
+#ifdef O_NONBLOCK
+    flags |= O_NONBLOCK;
+#endif
+    return flags;
+}
+
 bool multiplyChecked(size_t lhs, size_t rhs, size_t& out) {
     if (lhs == 0 || rhs == 0) {
         out = 0;
@@ -112,13 +135,17 @@ bool loadWandFromFile(MagickWand* wand, const QString& path) {
     }
 
     const QByteArray encoded = QFile::encodeName(path);
-    int fd = ::open(encoded.constData(), O_RDONLY | O_CLOEXEC);
+    struct stat st{};
+    if (!statPathNoFollow(encoded, st) || !imageInputStatIsSafe(st)) {
+        return false;
+    }
+
+    int fd = ::open(encoded.constData(), safeImageOpenFlags());
     if (fd < 0) {
         return false;
     }
 
-    struct stat st{};
-    if (::fstat(fd, &st) != 0 || !S_ISREG(st.st_mode) || st.st_size <= 0 || st.st_size > kMaxImageInputBytes) {
+    if (::fstat(fd, &st) != 0 || !imageInputStatIsSafe(st)) {
         ::close(fd);
         return false;
     }

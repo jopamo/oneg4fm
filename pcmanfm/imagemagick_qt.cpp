@@ -200,7 +200,7 @@ void ImageMagickProxyFolderModel::prefetchThumbnails(const QModelIndexList& inde
 }
 
 bool ImageMagickProxyFolderModel::isImageFile(const std::shared_ptr<const Panel::FileInfo>& info) const {
-    return info && info->isImage() && info->canThumbnail();
+    return info && info->isImage() && !info->isSymlink() && info->canThumbnail();
 }
 
 QString ImageMagickProxyFolderModel::pathForFile(const std::shared_ptr<const Panel::FileInfo>& info) const {

@@ -381,9 +381,9 @@ void FileInfo::setFromGFileInfo(const GObjectPtr<GFileInfo>& inf,
 }
 
 bool FileInfo::canThumbnail() const {
-    /* We cannot use S_ISREG here as this exclude all symlinks */
+    /* Thumbnail generation is limited to real regular files. */
     if (size_ == 0 || /* don't generate thumbnails for empty files */
-        !(mode_ & S_IFREG) || isDesktopEntry() || isUnknownType()) {
+        !S_ISREG(mode_) || isDesktopEntry() || isUnknownType()) {
         return false;
     }
     return true;

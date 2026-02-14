@@ -249,7 +249,8 @@ void View::onFileClicked(int type, const std::shared_ptr<const Panel::FileInfo>&
         // Internal image viewer: handle single native image before delegating to external launcher
         if (files.size() == 1) {
             const auto& file = files.front();
-            if (file && file->isImage() && file->isNative() && ImageMagickSupport::isAvailable()) {
+            if (file && file->isImage() && file->isNative() && !file->isSymlink() && file->canThumbnail() &&
+                ImageMagickSupport::isAvailable()) {
                 auto localPath = file->path().localPath();
                 if (localPath) {
                     const QString path = QString::fromUtf8(localPath.get());

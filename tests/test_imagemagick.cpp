@@ -6,6 +6,11 @@
 #include <QTemporaryDir>
 #include "../pcmanfm/imagemagick_support.h"
 
+#if defined(Q_OS_UNIX)
+#include <sys/stat.h>
+#include <unistd.h>
+#endif
+
 class TestImageMagick : public QObject {
     Q_OBJECT
 
@@ -87,6 +92,29 @@ class TestImageMagick : public QObject {
         ImageMagickBuffer oversized;
         QVERIFY(!ImageMagickSupport::loadImageBuffer(path, oversized));
         QVERIFY(!ImageMagickSupport::loadThumbnailBuffer(path, 128, 128, oversized));
+    }
+
+    void testRejectSymlinkInput() {
+#if !defined(Q_OS_UNIX)
+        QSKIP("Symlink test is Unix-only");
+#else
+        QTemporaryDir tempDir;
+        QVERIFY(tempDir.isValid());
+
+        const QString realPath = tempDir.filePath("target.jpg");
+        QImage image(32, 32, QImage::Format_RGB32);
+        image.fill(Qt::blue);
+        QVERIFY(image.save(realPath, "JPG"));
+
+        const QString symlinkPath = tempDir.filePath("link.jpg");
+        const QByteArray encodedReal = QFile::encodeName(realPath);
+        const QByteArray encodedLink = QFile::encodeName(symlinkPath);
+        QVERIFY(::symlink(encodedReal.constData(), encodedLink.constData()) == 0);
+
+        ImageMagickBuffer symlinkBuffer;
+        QVERIFY(!ImageMagickSupport::loadImageBuffer(symlinkPath, symlinkBuffer));
+        QVERIFY(!ImageMagickSupport::loadThumbnailBuffer(symlinkPath, 64, 64, symlinkBuffer));
+#endif
     }
 };
 
