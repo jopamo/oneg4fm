@@ -491,7 +491,6 @@ void HexEditorView::resizeEvent(QResizeEvent* event) {
 
 void HexEditorView::wheelEvent(QWheelEvent* event) {
     QAbstractScrollArea::wheelEvent(event);
-    ensureVisible();
     viewport()->update();
 }
 
