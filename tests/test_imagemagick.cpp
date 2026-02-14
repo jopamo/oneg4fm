@@ -2,6 +2,7 @@
 #include <QtTest>
 #include <QImage>
 #include <QFile>
+#include <QFileInfo>
 #include <QTemporaryDir>
 #include "../pcmanfm/imagemagick_support.h"
 
@@ -58,6 +59,34 @@ class TestImageMagick : public QObject {
         QVERIFY(b < 50);
         // Alpha should be 255 (opaque)
         QCOMPARE(a, 255);
+    }
+
+    void testRejectOversizedInput() {
+        QTemporaryDir tempDir;
+        QVERIFY(tempDir.isValid());
+
+        QString path = tempDir.filePath("oversized.jpg");
+        QImage image(64, 64, QImage::Format_RGB32);
+        image.fill(Qt::green);
+        QVERIFY(image.save(path, "JPG"));
+
+        ImageMagickBuffer baseline;
+        QVERIFY(ImageMagickSupport::loadImageBuffer(path, baseline));
+
+        QFile file(path);
+        QVERIFY(file.open(QIODevice::Append));
+
+        const QByteArray chunk(1024 * 1024, '\0');
+        for (int i = 0; i < 70; ++i) {
+            QCOMPARE(file.write(chunk), static_cast<qint64>(chunk.size()));
+        }
+        file.close();
+
+        QVERIFY(QFileInfo(path).size() > 64LL * 1024LL * 1024LL);
+
+        ImageMagickBuffer oversized;
+        QVERIFY(!ImageMagickSupport::loadImageBuffer(path, oversized));
+        QVERIFY(!ImageMagickSupport::loadThumbnailBuffer(path, 128, 128, oversized));
     }
 };
 

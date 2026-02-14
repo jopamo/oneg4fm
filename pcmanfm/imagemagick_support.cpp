@@ -10,6 +10,7 @@
 #ifdef HAVE_MAGICKWAND
 #include <MagickWand/MagickWand.h>
 #include <cerrno>
+#include <cstdio>
 #include <cstring>
 #include <fcntl.h>
 #include <limits>
@@ -24,76 +25,55 @@ namespace {
 
 class MagickInitializer {
    public:
-    MagickInitializer() { MagickWandGenesis(); }
+    MagickInitializer() {
+        MagickWandGenesis();
+        // Keep decode resources bounded so malformed or bomb images cannot
+        // consume unbounded process memory/CPU time.
+        MagickSetResourceLimit(MemoryResource, 256ULL * 1024ULL * 1024ULL);
+        MagickSetResourceLimit(MapResource, 512ULL * 1024ULL * 1024ULL);
+        MagickSetResourceLimit(DiskResource, 1024ULL * 1024ULL * 1024ULL);
+        MagickSetResourceLimit(AreaResource, 64ULL * 1024ULL * 1024ULL);
+        MagickSetResourceLimit(WidthResource, 16384);
+        MagickSetResourceLimit(HeightResource, 16384);
+        MagickSetResourceLimit(TimeResource, 30);
+    }
     ~MagickInitializer() { MagickWandTerminus(); }
 };
 
 MagickInitializer g_magickInitializer;
 
-QByteArray readFilePosix(const QString& path) {
-    const QByteArray encoded = QFile::encodeName(path);
-    int fd = ::open(encoded.constData(), O_RDONLY | O_CLOEXEC);
-    if (fd < 0) {
-        return {};
+constexpr qint64 kMaxImageInputBytes = 64LL * 1024LL * 1024LL;
+constexpr size_t kMaxDecodedDimension = 16384;
+constexpr size_t kMaxDecodedPixels = 64ULL * 1024ULL * 1024ULL;
+constexpr size_t kRgbaChannels = 4;
+
+bool multiplyChecked(size_t lhs, size_t rhs, size_t& out) {
+    if (lhs == 0 || rhs == 0) {
+        out = 0;
+        return true;
+    }
+    if (lhs > std::numeric_limits<size_t>::max() / rhs) {
+        return false;
+    }
+    out = lhs * rhs;
+    return true;
+}
+
+bool dimensionsWithinLimits(size_t width, size_t height) {
+    if (width == 0 || height == 0) {
+        return false;
     }
 
-    struct stat st{};
-    if (::fstat(fd, &st) != 0) {
-        ::close(fd);
-        return {};
+    if (width > kMaxDecodedDimension || height > kMaxDecodedDimension) {
+        return false;
     }
 
-    if (!S_ISREG(st.st_mode)) {
-        ::close(fd);
-        return {};
+    size_t pixelCount = 0;
+    if (!multiplyChecked(width, height, pixelCount)) {
+        return false;
     }
 
-    const qint64 size = st.st_size;
-    if (size <= 0) {
-        ::close(fd);
-        return {};
-    }
-
-    if (size > std::numeric_limits<int>::max()) {
-        ::close(fd);
-        return {};
-    }
-
-    QByteArray buffer;
-    buffer.resize(size);
-
-    char* data = buffer.data();
-    qint64 remaining = size;
-    qint64 offset = 0;
-
-    while (remaining > 0) {
-        const ssize_t n = ::read(fd, data + offset, static_cast<size_t>(remaining));
-        if (n < 0) {
-            if (errno == EINTR) {
-                continue;
-            }
-            buffer.clear();
-            break;
-        }
-        if (n == 0) {
-            break;
-        }
-
-        offset += n;
-        remaining -= n;
-    }
-
-    ::close(fd);
-
-    if (buffer.isEmpty()) {
-        return {};
-    }
-
-    if (offset != size) {
-        buffer.truncate(offset);
-    }
-
-    return buffer;
+    return pixelCount <= kMaxDecodedPixels;
 }
 
 bool writeFilePosix(const QString& path, const unsigned char* data, size_t size) {
@@ -127,17 +107,47 @@ bool writeFilePosix(const QString& path, const unsigned char* data, size_t size)
 }
 
 bool loadWandFromFile(MagickWand* wand, const QString& path) {
-    QByteArray data = readFilePosix(path);
-    if (data.isEmpty()) {
+    if (!wand) {
         return false;
     }
 
-    if (MagickReadImageBlob(wand, reinterpret_cast<const unsigned char*>(data.constData()),
-                            static_cast<size_t>(data.size())) == MagickFalse) {
+    const QByteArray encoded = QFile::encodeName(path);
+    int fd = ::open(encoded.constData(), O_RDONLY | O_CLOEXEC);
+    if (fd < 0) {
         return false;
     }
 
-    return true;
+    struct stat st{};
+    if (::fstat(fd, &st) != 0 || !S_ISREG(st.st_mode) || st.st_size <= 0 || st.st_size > kMaxImageInputBytes) {
+        ::close(fd);
+        return false;
+    }
+
+    FILE* stream = ::fdopen(fd, "rb");
+    if (!stream) {
+        ::close(fd);
+        return false;
+    }
+
+    bool ok = false;
+    MagickWand* probe = NewMagickWand();
+    if (probe && MagickPingImageFile(probe, stream) != MagickFalse) {
+        const size_t sourceWidth = MagickGetImageWidth(probe);
+        const size_t sourceHeight = MagickGetImageHeight(probe);
+
+        if (dimensionsWithinLimits(sourceWidth, sourceHeight) && ::fseek(stream, 0, SEEK_SET) == 0 &&
+            MagickReadImageFile(wand, stream) != MagickFalse) {
+            const size_t decodedWidth = MagickGetImageWidth(wand);
+            const size_t decodedHeight = MagickGetImageHeight(wand);
+            ok = dimensionsWithinLimits(decodedWidth, decodedHeight);
+        }
+    }
+
+    if (probe) {
+        DestroyMagickWand(probe);
+    }
+    ::fclose(stream);
+    return ok;
 }
 
 bool saveWandToFile(MagickWand* wand, const QString& path) {
@@ -156,7 +166,8 @@ bool fillBufferFromWand(MagickWand* wand, ImageMagickBuffer& out) {
     const size_t w = MagickGetImageWidth(wand);
     const size_t h = MagickGetImageHeight(wand);
 
-    if (w == 0 || h == 0) {
+    if (!dimensionsWithinLimits(w, h) || w > static_cast<size_t>(std::numeric_limits<int>::max()) ||
+        h > static_cast<size_t>(std::numeric_limits<int>::max())) {
         return false;
     }
 
@@ -165,9 +176,15 @@ bool fillBufferFromWand(MagickWand* wand, ImageMagickBuffer& out) {
     }
     MagickSetImageType(wand, TrueColorAlphaType);
 
-    const size_t channels = 4;
-    const size_t stride = w * channels;
-    const size_t bufferSize = stride * h;
+    size_t stride = 0;
+    if (!multiplyChecked(w, kRgbaChannels, stride)) {
+        return false;
+    }
+
+    size_t bufferSize = 0;
+    if (!multiplyChecked(stride, h, bufferSize)) {
+        return false;
+    }
 
     ImageMagickBuffer buf;
     buf.width = static_cast<int>(w);

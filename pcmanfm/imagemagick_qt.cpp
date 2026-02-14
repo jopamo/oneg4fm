@@ -19,10 +19,17 @@ namespace PCManFM {
 namespace {
 
 QLoggingCategory kMagickLog("pcmanfm.imagemagick");
+constexpr int kMaxRequestedMagickDimension = 16384;
 
 bool bufferMatchesSize(const ImageMagickBuffer& buf) {
     const qsizetype expected = static_cast<qsizetype>(buf.width) * static_cast<qsizetype>(buf.height) * 4;
     return expected > 0 && expected <= static_cast<qsizetype>(buf.pixels.size());
+}
+
+QSize sanitizedDecodeSize(const QSize& requested) {
+    const int width = std::clamp(requested.width(), 1, kMaxRequestedMagickDimension);
+    const int height = std::clamp(requested.height(), 1, kMaxRequestedMagickDimension);
+    return QSize(width, height);
 }
 
 struct ThumbnailResult {
@@ -71,8 +78,9 @@ QImage createThumbnailImageMagick(const QString& path, const QSize& thumbSize) {
         return {};
     }
 
+    const QSize boundedThumb = sanitizedDecodeSize(thumbSize);
     ImageMagickBuffer buffer;
-    if (!ImageMagickSupport::loadThumbnailBuffer(path, thumbSize.width(), thumbSize.height(), buffer)) {
+    if (!ImageMagickSupport::loadThumbnailBuffer(path, boundedThumb.width(), boundedThumb.height(), buffer)) {
         return {};
     }
 
@@ -109,8 +117,9 @@ QPixmap createPreviewPixmapMagick(const QString& path, const QSize& maxSize) {
         return {};
     }
 
+    const QSize boundedSize = sanitizedDecodeSize(maxSize);
     ImageMagickBuffer buffer;
-    if (!ImageMagickSupport::loadPreviewBuffer(path, maxSize.width(), maxSize.height(), buffer)) {
+    if (!ImageMagickSupport::loadPreviewBuffer(path, boundedSize.width(), boundedSize.height(), buffer)) {
         return {};
     }
 
