@@ -57,16 +57,20 @@ add_subdirectory(libfm)
 add_subdirectory(libfm-qt)
 add_subdirectory(pcmanfm)
 
-# manpage for pcmanfm-qt
-configure_file(
-    "${CMAKE_CURRENT_SOURCE_DIR}/pcmanfm-qt.1.in"
-    "${CMAKE_CURRENT_BINARY_DIR}/pcmanfm-qt.1"
-    @ONLY
-)
-install(FILES
-    "${CMAKE_CURRENT_BINARY_DIR}/pcmanfm-qt.1"
-    DESTINATION "${CMAKE_INSTALL_MANDIR}/man1"
-)
+# manpage for pcmanfm-qt (optional in development trees)
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/pcmanfm-qt.1.in")
+    configure_file(
+        "${CMAKE_CURRENT_SOURCE_DIR}/pcmanfm-qt.1.in"
+        "${CMAKE_CURRENT_BINARY_DIR}/pcmanfm-qt.1"
+        @ONLY
+    )
+    install(FILES
+        "${CMAKE_CURRENT_BINARY_DIR}/pcmanfm-qt.1"
+        DESTINATION "${CMAKE_INSTALL_MANDIR}/man1"
+    )
+else()
+    message(STATUS "Skipping manpage generation: pcmanfm-qt.1.in not found")
+endif()
 
 # add Doxygen support to generate API docs
 # References:
