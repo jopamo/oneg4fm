@@ -1,7 +1,7 @@
 [System]
 IconThemeName=elementary
 FallbackIconThemeName=Papirus-Dark
-Archiver=lxqt-archiver
+Archiver=file-roller
 SIUnit=false
 Terminal=qterminal
 

@@ -26,17 +26,17 @@ function(pcmanfm_add_test target)
     set_tests_properties(${target} PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
 endfunction()
 
-pcmanfm_add_test(pcmanfm-qt-basic-tests
+pcmanfm_add_test(oneg4fm-basic-tests
     SOURCES
         test_basic.cpp
 )
 
-pcmanfm_add_test(pcmanfm-qt-core-utils-tests
+pcmanfm_add_test(oneg4fm-core-utils-tests
     SOURCES
         test_core_utils.cpp
 )
 
-pcmanfm_add_test(pcmanfm-qt-fs-tests
+pcmanfm_add_test(oneg4fm-fs-tests
     SOURCES
         fs_ops_test.cpp
         ../src/core/fs_ops.cpp
@@ -46,7 +46,7 @@ pcmanfm_add_test(pcmanfm-qt-fs-tests
         ${BLAKE3_INCLUDE_DIRS}
 )
 
-pcmanfm_add_test(pcmanfm-qt-ops-tests
+pcmanfm_add_test(oneg4fm-ops-tests
     SOURCES
         qt_fileops_test.cpp
         ../src/backends/qt/qt_fileops.cpp
@@ -58,7 +58,7 @@ pcmanfm_add_test(pcmanfm-qt-ops-tests
         ${BLAKE3_INCLUDE_DIRS}
 )
 
-pcmanfm_add_test(pcmanfm-qt-archive-tests
+pcmanfm_add_test(oneg4fm-archive-tests
     SOURCES
         archive_extract_test.cpp
         ../src/core/archive_extract.cpp
@@ -71,20 +71,20 @@ pcmanfm_add_test(pcmanfm-qt-archive-tests
         ${BLAKE3_INCLUDE_DIRS}
 )
 
-pcmanfm_add_test(pcmanfm-qt-windowed-reader-tests
+pcmanfm_add_test(oneg4fm-windowed-reader-tests
     SOURCES
         windowed_file_reader_test.cpp
         ../src/core/windowed_file_reader.cpp
 )
 
-pcmanfm_add_test(pcmanfm-qt-browsehistory-tests
+pcmanfm_add_test(oneg4fm-browsehistory-tests
     SOURCES
         test_browsehistory.cpp
     LIBS
         fm-qt6
 )
 
-pcmanfm_add_test(pcmanfm-qt-disasm-tests
+pcmanfm_add_test(oneg4fm-disasm-tests
     SOURCES
         disasm_engine_test.cpp
         ../src/ui/disasm_engine.cpp
@@ -110,7 +110,7 @@ set(PCMANFM_SETTINGS_INCLUDES
     ${BLAKE3_INCLUDE_DIRS}
 )
 
-pcmanfm_add_test(pcmanfm-qt-utils-tests
+pcmanfm_add_test(oneg4fm-utils-tests
     SOURCES
         test_utils.cpp
         ${PCMANFM_SETTINGS_SOURCES}
@@ -120,7 +120,7 @@ pcmanfm_add_test(pcmanfm-qt-utils-tests
         ${PCMANFM_SETTINGS_INCLUDES}
 )
 
-pcmanfm_add_test(pcmanfm-qt-settings-tests
+pcmanfm_add_test(oneg4fm-settings-tests
     SOURCES
         test_settings.cpp
         ${PCMANFM_SETTINGS_SOURCES}
@@ -130,7 +130,7 @@ pcmanfm_add_test(pcmanfm-qt-settings-tests
         ${PCMANFM_SETTINGS_INCLUDES}
 )
 
-pcmanfm_add_test(pcmanfm-qt-settings-functionality-tests
+pcmanfm_add_test(oneg4fm-settings-functionality-tests
     SOURCES
         test_settings_functionality.cpp
         ${PCMANFM_SETTINGS_SOURCES}
@@ -146,7 +146,7 @@ set(PCMANFM_XDGDIR_SOURCES
     ../src/core/fs_ops.cpp
 )
 
-pcmanfm_add_test(pcmanfm-qt-xdgdir-tests
+pcmanfm_add_test(oneg4fm-xdgdir-tests
     SOURCES
         test_xdgdir.cpp
         ${PCMANFM_XDGDIR_SOURCES}
@@ -156,7 +156,7 @@ pcmanfm_add_test(pcmanfm-qt-xdgdir-tests
         ${BLAKE3_INCLUDE_DIRS}
 )
 
-pcmanfm_add_test(pcmanfm-qt-xdgdir-functionality-tests
+pcmanfm_add_test(oneg4fm-xdgdir-functionality-tests
     SOURCES
         test_xdgdir_functionality.cpp
         ${PCMANFM_XDGDIR_SOURCES}
@@ -172,7 +172,7 @@ if(PKG_CONFIG_FOUND)
 endif()
 
 if(MAGICKWAND_FOUND)
-    pcmanfm_add_test(pcmanfm-qt-imagemagick-tests
+    pcmanfm_add_test(oneg4fm-imagemagick-tests
         SOURCES
             test_imagemagick.cpp
             ../pcmanfm/imagemagick_support.cpp
@@ -181,6 +181,6 @@ if(MAGICKWAND_FOUND)
         INCLUDES
             ${MAGICKWAND_INCLUDE_DIRS}
     )
-    target_compile_definitions(pcmanfm-qt-imagemagick-tests PRIVATE HAVE_MAGICKWAND)
-    target_compile_options(pcmanfm-qt-imagemagick-tests PRIVATE ${MAGICKWAND_CFLAGS_OTHER})
+    target_compile_definitions(oneg4fm-imagemagick-tests PRIVATE HAVE_MAGICKWAND)
+    target_compile_options(oneg4fm-imagemagick-tests PRIVATE ${MAGICKWAND_CFLAGS_OTHER})
 endif()

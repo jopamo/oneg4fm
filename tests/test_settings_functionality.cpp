@@ -85,8 +85,8 @@ void TestSettingsFunctionality::testSettingsProfileDir() {
     QString profileDir = settings.profileDir("default");
     QVERIFY(!profileDir.isEmpty());
 
-    // Should contain "pcmanfm-qt" and the profile name
-    QVERIFY(profileDir.contains("pcmanfm-qt"));
+    // Should contain "oneg4fm" and the profile name
+    QVERIFY(profileDir.contains("oneg4fm"));
     QVERIFY(profileDir.contains("default"));
 
     // Test with fallback

@@ -1,5 +1,5 @@
 /*
- * Bulk file renaming implementation for PCManFM-Qt
+ * Bulk file renaming implementation for oneg4fm
  * pcmanfm/bulkrename.cpp
  */
 

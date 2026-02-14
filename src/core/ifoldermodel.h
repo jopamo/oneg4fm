@@ -1,6 +1,6 @@
 /*
- * Folder model interface for PCManFM-Qt backend architecture
- * pcmanfm-qt/src/core/ifoldermodel.h
+ * Folder model interface for oneg4fm backend architecture
+ * oneg4fm/src/core/ifoldermodel.h
  */
 
 #pragma once

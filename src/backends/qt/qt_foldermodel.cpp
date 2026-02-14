@@ -1,6 +1,6 @@
 /*
- * Qt-based folder model implementation for PCManFM-Qt
- * pcmanfm-qt/src/backends/qt/qt_foldermodel.cpp
+ * Qt-based folder model implementation for oneg4fm
+ * oneg4fm/src/backends/qt/qt_foldermodel.cpp
  */
 
 #include "qt_foldermodel.h"

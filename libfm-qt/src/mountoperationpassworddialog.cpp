@@ -40,7 +40,7 @@ MountOperationPasswordDialog::MountOperationPasswordDialog(MountOperation* op, G
     ui->buttonBox->buttons().constFirst()->setText(tr("&Connect"));
     connect(ui->Anonymous, &QAbstractButton::toggled, this, &MountOperationPasswordDialog::onAnonymousToggled);
 
-    QSettings settings(QSettings::UserScope, QLatin1StringView("lxqt"), QLatin1StringView("mountdialog"));
+    QSettings settings(QSettings::UserScope, QLatin1StringView("oneg4fm"), QLatin1StringView("mountdialog"));
 
     if (canAnonymous) {
         // select ananymous by default if applicable.
@@ -52,7 +52,8 @@ MountOperationPasswordDialog::MountOperationPasswordDialog(MountOperation* op, G
         }
         connect(ui->usernameGroup, &QButtonGroup::buttonToggled, this, [this](QAbstractButton* btn, bool checked) {
             if (checked) {
-                QSettings settings(QSettings::UserScope, QLatin1StringView("lxqt"), QLatin1StringView("mountdialog"));
+                QSettings settings(QSettings::UserScope, QLatin1StringView("oneg4fm"),
+                                   QLatin1StringView("mountdialog"));
                 settings.setValue(QLatin1StringView("Anonymous"), btn == ui->Anonymous);
             }
         });
@@ -91,7 +92,8 @@ MountOperationPasswordDialog::MountOperationPasswordDialog(MountOperation* op, G
         connect(ui->passwordGroup, &QButtonGroup::buttonToggled, this, [this](QAbstractButton* btn, bool checked) {
             if (checked) {
                 int remember = (btn == ui->forgetPassword ? -1 : btn == ui->storePassword ? 1 : 0);
-                QSettings settings(QSettings::UserScope, QLatin1StringView("lxqt"), QLatin1StringView("mountdialog"));
+                QSettings settings(QSettings::UserScope, QLatin1StringView("oneg4fm"),
+                                   QLatin1StringView("mountdialog"));
                 settings.setValue(QLatin1StringView("RememberPassword"), remember);
             }
         });

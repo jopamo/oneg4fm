@@ -93,29 +93,29 @@ set(pcmanfm_UIS
 )
 
 configure_file(
-    pcmanfm-qt.desktop.in
-    "${CMAKE_CURRENT_BINARY_DIR}/pcmanfm-qt.desktop"
+    oneg4fm.desktop.in
+    "${CMAKE_CURRENT_BINARY_DIR}/oneg4fm.desktop"
     @ONLY
 )
-set(PCMANFM_DESKTOP_FILE "${CMAKE_CURRENT_BINARY_DIR}/pcmanfm-qt.desktop")
+set(PCMANFM_DESKTOP_FILE "${CMAKE_CURRENT_BINARY_DIR}/oneg4fm.desktop")
 
-add_executable(pcmanfm-qt
+add_executable(oneg4fm
     ${pcmanfm_SRCS}
     ${pcmanfm_DBUS_SRCS}
     ${pcmanfm_UIS}
 )
 
-target_compile_definitions(pcmanfm-qt
+target_compile_definitions(oneg4fm
     PRIVATE
-        PCMANFM_DATA_DIR="${CMAKE_INSTALL_PREFIX}/share/pcmanfm-qt"
+        PCMANFM_DATA_DIR="${CMAKE_INSTALL_PREFIX}/share/oneg4fm"
         PCMANFM_QT_VERSION="${PCMANFM_QT_VERSION}"
         LIBFM_DATA_DIR="${CMAKE_INSTALL_PREFIX}/share/libfm"
 )
 
-target_include_directories(pcmanfm-qt
+target_include_directories(oneg4fm
     PRIVATE
         "${Qt6Gui_PRIVATE_INCLUDE_DIRS}"
-        "${CMAKE_CURRENT_BINARY_DIR}/pcmanfm-qt_autogen/include"
+        "${CMAKE_CURRENT_BINARY_DIR}/oneg4fm_autogen/include"
         ../src
         ${BLAKE3_INCLUDE_DIRS}
         ${LIBARCHIVE_INCLUDE_DIRS}
@@ -123,7 +123,7 @@ target_include_directories(pcmanfm-qt
         pcmanfm
 )
 
-target_link_libraries(pcmanfm-qt
+target_link_libraries(oneg4fm
     Qt6::Widgets
     Qt6::DBus
     Qt6::Concurrent
@@ -134,15 +134,15 @@ target_link_libraries(pcmanfm-qt
 )
 
 if(MAGICKWAND_FOUND)
-    target_include_directories(pcmanfm-qt PRIVATE ${MAGICKWAND_INCLUDE_DIRS})
-    target_link_libraries(pcmanfm-qt ${MAGICKWAND_LIBRARIES})
-    target_compile_options(pcmanfm-qt PRIVATE ${MAGICKWAND_CFLAGS_OTHER})
-    target_compile_definitions(pcmanfm-qt PRIVATE HAVE_MAGICKWAND)
+    target_include_directories(oneg4fm PRIVATE ${MAGICKWAND_INCLUDE_DIRS})
+    target_link_libraries(oneg4fm ${MAGICKWAND_LIBRARIES})
+    target_compile_options(oneg4fm PRIVATE ${MAGICKWAND_CFLAGS_OTHER})
+    target_compile_definitions(oneg4fm PRIVATE HAVE_MAGICKWAND)
 endif()
 
-install(TARGETS pcmanfm-qt RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
+install(TARGETS oneg4fm RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
 
-# install a desktop entry file for pcmanfm-qt and desktop preferences
+# install a desktop entry file for oneg4fm and desktop preferences
 install(FILES "${PCMANFM_DESKTOP_FILE}" DESTINATION "${CMAKE_INSTALL_DATADIR}/applications"
 )
 

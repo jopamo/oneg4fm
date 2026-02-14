@@ -1,4 +1,4 @@
-# PCManFM-Qt Conversion Status
+# oneg4fm Conversion Status
 
 ## Quick Status Overview
 
@@ -54,8 +54,8 @@
 add_subdirectory(libfm-qt)  # vendored Panel/libfm-qt build
 
 # pcmanfm/CMakeLists.txt
-target_link_libraries(pcmanfm-qt fm-qt6)
-target_compile_definitions(pcmanfm-qt LIBFM_DATA_DIR=...)
+target_link_libraries(oneg4fm fm-qt6)
+target_compile_definitions(oneg4fm LIBFM_DATA_DIR=...)
 ```
 
 ## Next Steps Priority

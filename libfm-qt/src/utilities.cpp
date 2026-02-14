@@ -195,7 +195,7 @@ bool renameFile(std::shared_ptr<const Fm::FileInfo> file, QWidget* parent) {
 
 void setDefaultAppForType(const Fm::GAppInfoPtr app, std::shared_ptr<const Fm::MimeType> mimeType) {
     // NOTE: "g_app_info_set_as_default_for_type()" writes to "~/.config/mimeapps.list"
-    // but we want to set the default app only for the current DE (e.g., LXQt).
+    // but we want to set the default app only for the current DE.
     // More importantly, if the DE-specific list already exists and contains some
     // default apps, it will have priority over "~/.config/mimeapps.list" and so,
     // "g_app_info_set_as_default_for_type()" could not change those apps.
@@ -411,8 +411,7 @@ int execModelessDialog(QDialog* dlg) {
 }
 
 // check if GVFS can support this uri scheme (lower case)
-// NOTE: this does not work reliably due to some problems in gio/gvfs and causes bug lxqt/lxqt#512
-// https://github.com/lxqt/lxqt/issues/512
+// NOTE: this does not work reliably due to some problems in gio/gvfs.
 // Use uriExists() whenever possible.
 bool isUriSchemeSupported(const char* uriScheme) {
     const gchar* const* schemes = g_vfs_get_supported_uri_schemes(g_vfs_get_default());

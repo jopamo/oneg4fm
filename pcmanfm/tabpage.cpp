@@ -1,5 +1,5 @@
 /*
- * Tab page implementation for PCManFM-Qt
+ * Tab page implementation for oneg4fm
  * pcmanfm/tabpage.cpp
  */
 

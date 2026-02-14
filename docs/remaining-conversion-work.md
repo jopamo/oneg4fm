@@ -1,8 +1,8 @@
-# PCManFM-Qt: Remaining libfm/libfm-qt Conversion Work
+# oneg4fm: Remaining libfm/libfm-qt Conversion Work
 
 ## Overview
 
-This document outlines the remaining work needed to complete the migration from libfm/libfm-qt to the new modular backend architecture in PCManFM-Qt. The project is currently in an intermediate state where some backend interfaces have been implemented, but core UI components still depend heavily on libfm-qt.
+This document outlines the remaining work needed to complete the migration from libfm/libfm-qt to the new modular backend architecture in oneg4fm. The project is currently in an intermediate state where some backend interfaces have been implemented, but core UI components still depend heavily on libfm-qt.
 
 ## Current Status
 
@@ -192,7 +192,7 @@ Based on current libfm-qt usage, these additional backend interfaces are needed:
 - add_subdirectory(libfm-qt) to build the vendored lib in-tree
 
 **pcmanfm/CMakeLists.txt:**
-- target_link_libraries(pcmanfm-qt Qt6::Widgets Qt6::DBus fm-qt6)
+- target_link_libraries(oneg4fm Qt6::Widgets Qt6::DBus fm-qt6)
 
 ### Required Changes
 

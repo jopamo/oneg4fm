@@ -1,5 +1,5 @@
 /*
- * Application implementation for PCManFM-Qt
+ * Application implementation for oneg4fm
  * pcmanfm/application.cpp
  */
 
@@ -108,7 +108,7 @@ Application::Application(int& argc, char** argv)
     argv_ = argv;
 
     setApplicationVersion(QStringLiteral(PCMANFM_QT_VERSION));
-    setWindowIcon(QIcon::fromTheme(QStringLiteral("pcmanfm-qt")));
+    setWindowIcon(QIcon::fromTheme(QStringLiteral("oneg4fm")));
 
     QDBusConnection dbus = QDBusConnection::sessionBus();
 
@@ -186,10 +186,10 @@ bool Application::parseCommandLineArgs() {
     parser.addOption(profileOption);
 
     QCommandLineOption daemonOption({QStringLiteral("d"), QStringLiteral("daemon-mode")},
-                                    tr("Run PCManFM-Qt as a daemon"));
+                                    tr("Run oneg4fm as a daemon"));
     parser.addOption(daemonOption);
 
-    QCommandLineOption quitOption({QStringLiteral("q"), QStringLiteral("quit")}, tr("Quit PCManFM-Qt"));
+    QCommandLineOption quitOption({QStringLiteral("q"), QStringLiteral("quit")}, tr("Quit oneg4fm"));
     parser.addOption(quitOption);
 
     QCommandLineOption newWindowOption({QStringLiteral("n"), QStringLiteral("new-window")}, tr("Open new window"));
@@ -306,8 +306,8 @@ void Application::init() {
     // load libfm-qt translations
     installTranslator(libFm_.translator());
 
-    // load pcmanfm-qt translations
-    if (translator.load(QStringLiteral("pcmanfm-qt_") + QLocale::system().name(),
+    // load oneg4fm translations
+    if (translator.load(QStringLiteral("oneg4fm_") + QLocale::system().name(),
                         QStringLiteral(PCMANFM_DATA_DIR) + QStringLiteral("/translations"))) {
         installTranslator(&translator);
     }

@@ -22,7 +22,7 @@ void MainWindow::dragEnterEvent(QDragEnterEvent* event) {
     }
 
     const QMimeData* mime = event->mimeData();
-    if (!mime || !mime->hasFormat(QStringLiteral("application/pcmanfm-qt-tab"))) {
+    if (!mime || !mime->hasFormat(QStringLiteral("application/oneg4fm-tab"))) {
         return;
     }
 
@@ -38,7 +38,7 @@ void MainWindow::dropEvent(QDropEvent* event) {
     }
 
     const QMimeData* mime = event->mimeData();
-    if (mime && mime->hasFormat(QStringLiteral("application/pcmanfm-qt-tab"))) {
+    if (mime && mime->hasFormat(QStringLiteral("application/oneg4fm-tab"))) {
         if (QObject* sourceObject = event->source()) {
             // announce that the tab drop is accepted by us (see TabBar::mouseMoveEvent)
             sourceObject->setProperty(TabBar::tabDropped, true);

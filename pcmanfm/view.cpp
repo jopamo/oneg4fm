@@ -1,5 +1,5 @@
 /*
- * Custom folder view implementation for PCManFM-Qt
+ * Custom folder view implementation for oneg4fm
  * pcmanfm/view.cpp
  */
 

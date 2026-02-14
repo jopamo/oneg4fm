@@ -1,5 +1,5 @@
 /*
- * Auto-run dialog implementation for PCManFM-Qt
+ * Auto-run dialog implementation for oneg4fm
  * pcmanfm/autorundialog.cpp
  */
 

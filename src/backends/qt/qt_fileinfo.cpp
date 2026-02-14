@@ -1,6 +1,6 @@
 /*
- * Qt-based file info implementation for PCManFM-Qt
- * pcmanfm-qt/src/backends/qt/qt_fileinfo.cpp
+ * Qt-based file info implementation for oneg4fm
+ * oneg4fm/src/backends/qt/qt_fileinfo.cpp
  */
 
 #include "qt_fileinfo.h"

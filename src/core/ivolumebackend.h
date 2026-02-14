@@ -1,6 +1,6 @@
 /*
- * Volume backend interface for PCManFM-Qt backend architecture
- * pcmanfm-qt/src/core/ivolumebackend.h
+ * Volume backend interface for oneg4fm backend architecture
+ * oneg4fm/src/core/ivolumebackend.h
  */
 
 #pragma once

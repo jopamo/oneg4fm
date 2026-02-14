@@ -1,5 +1,5 @@
 /*
- * Custom tab bar implementation for PCManFM-Qt
+ * Custom tab bar implementation for oneg4fm
  * pcmanfm/tabbar.cpp
  */
 
@@ -17,7 +17,7 @@ namespace PCManFM {
 
 namespace {
 // Use QStringLiteral for MIME type to avoid runtime allocation
-const QString kTabMimeType = QStringLiteral("application/pcmanfm-qt-tab");
+const QString kTabMimeType = QStringLiteral("application/oneg4fm-tab");
 }  // namespace
 
 const char* TabBar::tabDropped = "_pcmanfm_tab_dropped";
@@ -84,7 +84,7 @@ void TabBar::handleTabDrag(QMouseEvent* event) {
     const Qt::DropAction result = drag->exec(Qt::MoveAction);
 
     if (result != Qt::MoveAction) {
-        // No PCManFM-Qt window accepted the drop
+        // No oneg4fm window accepted the drop
         // Detach the tab if more than one tab is present, otherwise cancel cleanly
         if (tabCountBefore > 1) {
             Q_EMIT tabDetached();

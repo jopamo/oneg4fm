@@ -1,9 +1,9 @@
 # libfm and libfm-qt Usage Analysis
 
-This document provides a comprehensive analysis of libfm and libfm-qt function usage in the pcmanfm-qt codebase. This analysis is intended to guide the modernization effort outlined in `CLAUDE.md`.
+This document provides a comprehensive analysis of libfm and libfm-qt function usage in the oneg4fm codebase. This analysis is intended to guide the modernization effort outlined in `CLAUDE.md`.
 
 **Date**: 2025-12-05
-**Analysis Scope**: All C/C++ source files in `/home/me/projects/pcmanfm-qt/`
+**Analysis Scope**: All C/C++ source files in `/home/me/projects/oneg4fm/`
 
 ## Overview
 
@@ -16,7 +16,7 @@ The project currently vendors both `libfm` (C library) and `libfm-qt` (C++ Qt wr
 | Function | Location | Usage |
 |----------|----------|-------|
 | `fm_config_init()` | `libfm-qt/src/libfmqt.cpp:67` | Initializes libfm's global configuration structure during libfm-qt initialization |
-| `fm_config` (global variable) | Various files | Shared configuration between pcmanfm-qt and libfm/libfm-qt |
+| `fm_config` (global variable) | Various files | Shared configuration between oneg4fm and libfm/libfm-qt |
 
 **Configuration fields accessed from `fm_config`**:
 
@@ -144,7 +144,7 @@ These functions are imported directly from the `Fm::` namespace:
 - However, the `fm_config` global variable breaks this abstraction
 
 ### 3.3 Configuration Sharing
-- The `fm_config` global variable is the primary shared state between pcmanfm-qt and libfm/libfm-qt
+- The `fm_config` global variable is the primary shared state between oneg4fm and libfm/libfm-qt
 - This creates a direct dependency that must be broken during migration
 
 ### 3.4 File System Operations

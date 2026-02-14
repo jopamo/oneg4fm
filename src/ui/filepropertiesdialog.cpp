@@ -1,6 +1,6 @@
 /*
- * Qt-based file properties dialog for PCManFM-Qt
- * pcmanfm-qt/src/ui/filepropertiesdialog.cpp
+ * Qt-based file properties dialog for oneg4fm
+ * oneg4fm/src/ui/filepropertiesdialog.cpp
  */
 
 #include "filepropertiesdialog.h"

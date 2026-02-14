@@ -26,10 +26,10 @@ class TestBrowseHistory : public QObject {
 
 void TestBrowseHistory::addPrunesForwardHistory() {
     Fm::BrowseHistory history;
-    const Fm::FilePath pathA = makePath("/tmp/pcmanfm-qt-history-a");
-    const Fm::FilePath pathB = makePath("/tmp/pcmanfm-qt-history-b");
-    const Fm::FilePath pathC = makePath("/tmp/pcmanfm-qt-history-c");
-    const Fm::FilePath pathD = makePath("/tmp/pcmanfm-qt-history-d");
+    const Fm::FilePath pathA = makePath("/tmp/oneg4fm-history-a");
+    const Fm::FilePath pathB = makePath("/tmp/oneg4fm-history-b");
+    const Fm::FilePath pathC = makePath("/tmp/oneg4fm-history-c");
+    const Fm::FilePath pathD = makePath("/tmp/oneg4fm-history-d");
 
     history.add(pathA, 1);
     history.add(pathB, 2);
@@ -52,10 +52,10 @@ void TestBrowseHistory::addRespectsMaxCount() {
     Fm::BrowseHistory history;
     history.setMaxCount(3);
 
-    const Fm::FilePath pathA = makePath("/tmp/pcmanfm-qt-history-max-a");
-    const Fm::FilePath pathB = makePath("/tmp/pcmanfm-qt-history-max-b");
-    const Fm::FilePath pathC = makePath("/tmp/pcmanfm-qt-history-max-c");
-    const Fm::FilePath pathD = makePath("/tmp/pcmanfm-qt-history-max-d");
+    const Fm::FilePath pathA = makePath("/tmp/oneg4fm-history-max-a");
+    const Fm::FilePath pathB = makePath("/tmp/oneg4fm-history-max-b");
+    const Fm::FilePath pathC = makePath("/tmp/oneg4fm-history-max-c");
+    const Fm::FilePath pathD = makePath("/tmp/oneg4fm-history-max-d");
 
     history.add(pathA);
     history.add(pathB);
@@ -72,11 +72,11 @@ void TestBrowseHistory::addRespectsMaxCount() {
 void TestBrowseHistory::setMaxCountShrinksAndKeepsIndexValid() {
     Fm::BrowseHistory history;
 
-    const Fm::FilePath pathA = makePath("/tmp/pcmanfm-qt-history-shrink-a");
-    const Fm::FilePath pathB = makePath("/tmp/pcmanfm-qt-history-shrink-b");
-    const Fm::FilePath pathC = makePath("/tmp/pcmanfm-qt-history-shrink-c");
-    const Fm::FilePath pathD = makePath("/tmp/pcmanfm-qt-history-shrink-d");
-    const Fm::FilePath pathE = makePath("/tmp/pcmanfm-qt-history-shrink-e");
+    const Fm::FilePath pathA = makePath("/tmp/oneg4fm-history-shrink-a");
+    const Fm::FilePath pathB = makePath("/tmp/oneg4fm-history-shrink-b");
+    const Fm::FilePath pathC = makePath("/tmp/oneg4fm-history-shrink-c");
+    const Fm::FilePath pathD = makePath("/tmp/oneg4fm-history-shrink-d");
+    const Fm::FilePath pathE = makePath("/tmp/oneg4fm-history-shrink-e");
 
     history.add(pathA);
     history.add(pathB);
@@ -101,8 +101,8 @@ void TestBrowseHistory::setMaxCountClampsToPositiveValue() {
     Fm::BrowseHistory history;
     history.setMaxCount(0);
 
-    const Fm::FilePath pathA = makePath("/tmp/pcmanfm-qt-history-zero-a");
-    const Fm::FilePath pathB = makePath("/tmp/pcmanfm-qt-history-zero-b");
+    const Fm::FilePath pathA = makePath("/tmp/oneg4fm-history-zero-a");
+    const Fm::FilePath pathB = makePath("/tmp/oneg4fm-history-zero-b");
 
     QCOMPARE(history.maxCount(), 1);
     history.add(pathA);

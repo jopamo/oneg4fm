@@ -1,5 +1,5 @@
 /*
- * Preferences dialog implementation for PCManFM-Qt
+ * Preferences dialog implementation for oneg4fm
  * pcmanfm/preferencesdialog.cpp
  */
 

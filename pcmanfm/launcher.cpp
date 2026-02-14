@@ -1,5 +1,5 @@
 /*
- * File launcher implementation for PCManFM-Qt
+ * File launcher implementation for oneg4fm
  * pcmanfm/launcher.cpp
  */
 
@@ -50,16 +50,16 @@ bool Launcher::openFolder(GAppLaunchContext* ctx, const Panel::FileInfoList& fol
     Panel::FilePath firstPath = (*it)->path();
 
     if (!mainWindow) {
-        // If there is no PCManFM-Qt main window, we may delegate to the system default file manager.
+        // If there is no oneg4fm main window, we may delegate to the system default file manager.
         // This is done when:
         //   1) openWithDefaultFileManager_ is set (e.g. desktop launch)
         //   2) we are not explicitly opening in new tabs
-        //   3) the default file manager exists and is not pcmanfm-qt itself
+        //   3) the default file manager exists and is not oneg4fm itself
         if (openWithDefaultFileManager_ && !openInNewTab_) {
             auto defaultApp = Panel::GAppInfoPtr{g_app_info_get_default_for_type("inode/directory", FALSE), false};
 
             // Check if default app exists and is NOT this application
-            if (defaultApp && std::strcmp(g_app_info_get_id(defaultApp.get()), "pcmanfm-qt.desktop") != 0) {
+            if (defaultApp && std::strcmp(g_app_info_get_id(defaultApp.get()), "oneg4fm.desktop") != 0) {
                 for (const auto& folder : folderInfos) {
                     Panel::FileLauncher::launchWithDefaultApp(folder, ctx);
                 }
@@ -67,7 +67,7 @@ bool Launcher::openFolder(GAppLaunchContext* ctx, const Panel::FileInfoList& fol
             }
         }
 
-        // Fall back to opening a new PCManFM-Qt main window
+        // Fall back to opening a new oneg4fm main window
         mainWindow = new MainWindow(std::move(firstPath));
         mainWindow->resize(settings.windowWidth(), settings.windowHeight());
         if (settings.windowX() != -1 && settings.windowY() != -1) {

@@ -1,5 +1,5 @@
 /*
- * Main window implementation for PCManFM-Qt
+ * Main window implementation for oneg4fm
  * pcmanfm/mainwindow.cpp
  */
 
@@ -172,7 +172,7 @@ MainWindow::MainWindow(Panel::FilePath path)
     spacer->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
     ui.toolBar->insertWidget(ui.actionMenu, spacer);
 
-    setWindowTitle(QStringLiteral("PCManFM-Qt"));
+    setWindowTitle(QStringLiteral("oneg4fm"));
 
     connect(ui.actionQuit, &QAction::triggered, qApp, &QApplication::quit);
 
@@ -336,9 +336,9 @@ void MainWindow::on_actionEditBookmarks_triggered() {
 }
 
 void MainWindow::on_actionAbout_triggered() {
-    QMessageBox::about(this, tr("About PCManFM-Qt"),
-                       tr("PCManFM-Qt is a file manager for LXQt.\n\n"
-                          "Copyright (C) 2013-2024 LXQt Team\n"));
+    QMessageBox::about(this, tr("About oneg4fm"),
+                       tr("oneg4fm is a file manager.\n\n"
+                          "Copyright (C) 2013-2024 oneg4fm Team\n"));
 }
 
 //-----------------------------------------------------------------------------

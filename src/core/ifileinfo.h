@@ -1,6 +1,6 @@
 /*
- * File info interface for PCManFM-Qt backend architecture
- * pcmanfm-qt/src/core/ifileinfo.h
+ * File info interface for oneg4fm backend architecture
+ * oneg4fm/src/core/ifileinfo.h
  */
 
 #pragma once

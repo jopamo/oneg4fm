@@ -298,7 +298,7 @@ static Qt::SortOrder sortOrderFromString(const QString str) {
 }
 
 void FileDialogHelper::loadSettings() {
-    QSettings settings(QSettings::UserScope, "lxqt"_L1, "filedialog"_L1);
+    QSettings settings(QSettings::UserScope, "oneg4fm"_L1, "filedialog"_L1);
     settings.beginGroup("Sizes"_L1);
     dlg_->resize(settings.value("WindowSize"_L1, QSize(700, 500)).toSize());
     dlg_->setSplitterPos(settings.value("SplitterPos"_L1, 200).toInt());
@@ -338,7 +338,7 @@ void FileDialogHelper::loadSettings() {
 
 // This also prevents redundant writings whenever a file dialog is closed without a change in its settings.
 void FileDialogHelper::saveSettings() {
-    QSettings settings(QSettings::UserScope, "lxqt"_L1, "filedialog"_L1);
+    QSettings settings(QSettings::UserScope, "oneg4fm"_L1, "filedialog"_L1);
     settings.beginGroup("Sizes"_L1);
     QSize windowSize = dlg_->size();
     if (settings.value("WindowSize"_L1) != windowSize) {  // no redundant write

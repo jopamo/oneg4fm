@@ -1,5 +1,5 @@
 /*
- * Status bar implementation for PCManFM-Qt
+ * Status bar implementation for oneg4fm
  * pcmanfm/statusbar.cpp
  */
 
