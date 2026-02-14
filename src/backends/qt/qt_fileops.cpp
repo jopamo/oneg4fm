@@ -13,11 +13,15 @@
 #include <QObject>
 #include <QThread>
 
+#include <algorithm>
 #include <atomic>
+#include <dirent.h>
 #include <functional>
-#include <sys/stat.h>
+#include <limits>
+#include <vector>
 #include <cerrno>
 #include <cstring>
+#include <sys/stat.h>
 
 namespace PCManFM {
 
@@ -40,6 +44,90 @@ FileOpProgress toQtProgress(const FsOps::ProgressInfo& core) {
     qt.filesTotal = core.filesTotal;
     qt.currentPath = fromNativePath(core.currentPath);
     return qt;
+}
+
+void setErrnoError(FsOps::Error& err, const char* context) {
+    err.code = errno;
+    err.message = std::string(context) + ": " + std::string(std::strerror(errno));
+}
+
+void addU64Saturated(std::uint64_t& dst, std::uint64_t value) {
+    const auto max = std::numeric_limits<std::uint64_t>::max();
+    dst = (value > max - dst) ? max : (dst + value);
+}
+
+void addIntSaturated(int& dst, int value) {
+    const int max = std::numeric_limits<int>::max();
+    if (value <= 0 || dst >= max) {
+        return;
+    }
+    dst = (value > max - dst) ? max : (dst + value);
+}
+
+struct SourceStats {
+    std::uint64_t bytesTotal = 0;
+    int entryCount = 0;
+};
+
+bool scanPathStats(const std::string& path, SourceStats& stats, FsOps::Error& err, int depth = 0) {
+    if (depth > FsOps::kMaxRecursionDepth) {
+        err.code = ELOOP;
+        err.message = "Maximum recursion depth exceeded";
+        return false;
+    }
+
+    struct stat st{};
+    if (::lstat(path.c_str(), &st) < 0) {
+        setErrnoError(err, "lstat");
+        return false;
+    }
+
+    addIntSaturated(stats.entryCount, 1);
+    if (S_ISREG(st.st_mode)) {
+        addU64Saturated(stats.bytesTotal, static_cast<std::uint64_t>(st.st_size));
+    }
+
+    if (!S_ISDIR(st.st_mode)) {
+        return true;
+    }
+
+    DIR* dir = ::opendir(path.c_str());
+    if (!dir) {
+        setErrnoError(err, "opendir");
+        return false;
+    }
+
+    for (;;) {
+        errno = 0;
+        dirent* ent = ::readdir(dir);
+        if (!ent) {
+            if (errno != 0) {
+                setErrnoError(err, "readdir");
+                ::closedir(dir);
+                return false;
+            }
+            break;
+        }
+
+        const char* child = ent->d_name;
+        if (!child || child[0] == '\0' || std::strcmp(child, ".") == 0 || std::strcmp(child, "..") == 0) {
+            continue;
+        }
+
+        std::string childPath = path;
+        if (!childPath.empty() && childPath.back() != '/') {
+            childPath.push_back('/');
+        }
+        childPath += child;
+
+        if (!scanPathStats(childPath, stats, err, depth + 1)) {
+            ::closedir(dir);
+            return false;
+        }
+    }
+
+    ::closedir(dir);
+    return true;
 }
 
 }  // namespace
@@ -74,31 +162,26 @@ class QtFileOps::Worker : public QObject {
     void finished(bool success, const QString& errorMessage);
 
    private:
-    FsOps::ProgressCallback makeProgressCallback() {
-        return [this](const FsOps::ProgressInfo& coreInfo) {
-            Q_EMIT progress(toQtProgress(coreInfo));
-            return !cancelled_.load();
+    bool performOperationList(const FileOpRequest& req,
+                              const std::function<bool(const std::string&,
+                                                       const std::string&,
+                                                       FsOps::ProgressInfo&,
+                                                       const FsOps::ProgressCallback&,
+                                                       FsOps::Error&)>& op,
+                              bool needsDestination) {
+        struct SourcePlan {
+            std::string sourcePath;
+            std::string destinationPath;
+            SourceStats stats;
+            int workUnits = 1;
         };
-    }
 
-    bool computeStatsForFile(const std::string& path, FsOps::ProgressInfo& progress, FsOps::Error& err) {
-        struct stat st;
-        if (::lstat(path.c_str(), &st) < 0) {
-            err.code = errno;
-            err.message = "lstat: " + std::string(std::strerror(errno));
-            return false;
-        }
+        std::vector<SourcePlan> plans;
+        plans.reserve(static_cast<std::size_t>(req.sources.size()));
 
-        if (S_ISREG(st.st_mode)) {
-            progress.bytesTotal += static_cast<std::uint64_t>(st.st_size);
-        }
-        return true;
-    }
+        int totalWorkUnits = 0;
+        std::uint64_t totalBytes = 0;
 
-    bool performOperationList(
-        const FileOpRequest& req,
-        const std::function<bool(const std::string&, const std::string&, FsOps::ProgressInfo&, FsOps::Error&)>& op,
-        bool needsDestination) {
         for (const QString& sourcePath : req.sources) {
             if (cancelled_.load()) {
                 Q_EMIT finished(false, QStringLiteral("Operation cancelled"));
@@ -112,19 +195,59 @@ class QtFileOps::Worker : public QObject {
             const std::string srcNative = toNativePath(sourcePath);
             const std::string dstNative = needsDestination ? toNativePath(destinationPath) : std::string();
 
-            FsOps::ProgressInfo progress{};
-            progress.filesTotal = 1;
-            progress.filesDone = 0;
-            progress.currentPath = srcNative;
-
             FsOps::Error err;
-            if (!computeStatsForFile(srcNative, progress, err)) {
+            SourceStats stats;
+            if (!scanPathStats(srcNative, stats, err)) {
                 Q_EMIT finished(false, QString::fromLocal8Bit(err.message.c_str()));
                 return false;
             }
 
-            auto opProgress = makeProgressCallback();
-            if (!op(srcNative, dstNative, progress, err)) {
+            SourcePlan plan;
+            plan.sourcePath = srcNative;
+            plan.destinationPath = dstNative;
+            plan.stats = stats;
+            plan.workUnits = (req.type == FileOpType::Delete) ? std::max(1, stats.entryCount) : 1;
+
+            addIntSaturated(totalWorkUnits, plan.workUnits);
+            addU64Saturated(totalBytes, stats.bytesTotal);
+            plans.push_back(std::move(plan));
+        }
+
+        int completedWorkUnits = 0;
+        std::uint64_t completedBytes = 0;
+
+        for (const SourcePlan& plan : plans) {
+            if (cancelled_.load()) {
+                Q_EMIT finished(false, QStringLiteral("Operation cancelled"));
+                return false;
+            }
+
+            FsOps::ProgressInfo sourceProgress{};
+            sourceProgress.filesTotal = plan.workUnits;
+            sourceProgress.filesDone = 0;
+            sourceProgress.bytesTotal = plan.stats.bytesTotal;
+            sourceProgress.bytesDone = 0;
+            sourceProgress.currentPath = plan.sourcePath;
+
+            auto opProgress = [this, &plan, &completedWorkUnits, &completedBytes, totalWorkUnits,
+                               totalBytes](const FsOps::ProgressInfo& sourceInfo) {
+                FsOps::ProgressInfo overall = sourceInfo;
+                const int localDone = std::min(std::max(0, sourceInfo.filesDone), plan.workUnits);
+                const std::uint64_t localBytesDone = std::min(sourceInfo.bytesDone, plan.stats.bytesTotal);
+                overall.filesTotal = totalWorkUnits;
+                overall.filesDone =
+                    std::min(std::numeric_limits<int>::max() - completedWorkUnits, localDone) + completedWorkUnits;
+                overall.bytesTotal = totalBytes;
+                overall.bytesDone = std::min<std::uint64_t>(totalBytes, completedBytes + localBytesDone);
+                if (overall.currentPath.empty()) {
+                    overall.currentPath = plan.sourcePath;
+                }
+                Q_EMIT progress(toQtProgress(overall));
+                return !cancelled_.load();
+            };
+
+            FsOps::Error err;
+            if (!op(plan.sourcePath, plan.destinationPath, sourceProgress, opProgress, err)) {
                 if (cancelled_.load() || err.code == ECANCELED) {
                     Q_EMIT finished(false, QStringLiteral("Operation cancelled"));
                 }
@@ -136,8 +259,16 @@ class QtFileOps::Worker : public QObject {
                 return false;
             }
 
-            progress.filesDone = 1;
-            opProgress(progress);
+            addIntSaturated(completedWorkUnits, plan.workUnits);
+            addU64Saturated(completedBytes, plan.stats.bytesTotal);
+
+            FsOps::ProgressInfo overallFinal{};
+            overallFinal.filesTotal = totalWorkUnits;
+            overallFinal.filesDone = completedWorkUnits;
+            overallFinal.bytesTotal = totalBytes;
+            overallFinal.bytesDone = completedBytes;
+            overallFinal.currentPath = plan.sourcePath;
+            Q_EMIT progress(toQtProgress(overallFinal));
         }
 
         Q_EMIT finished(true, QString());
@@ -147,9 +278,8 @@ class QtFileOps::Worker : public QObject {
     void performCopy(const FileOpRequest& req) {
         performOperationList(
             req,
-            [this, req](const std::string& src, const std::string& dst, FsOps::ProgressInfo& progress,
-                        FsOps::Error& err) {
-                auto cb = makeProgressCallback();
+            [req](const std::string& src, const std::string& dst, FsOps::ProgressInfo& progress,
+                  const FsOps::ProgressCallback& cb, FsOps::Error& err) {
                 const bool preserve = req.preserveOwnership;
                 return FsOps::copy_path(src, dst, progress, cb, err, preserve);
             },
@@ -159,9 +289,8 @@ class QtFileOps::Worker : public QObject {
     void performMove(const FileOpRequest& req) {
         performOperationList(
             req,
-            [this, req](const std::string& src, const std::string& dst, FsOps::ProgressInfo& progress,
-                        FsOps::Error& err) {
-                auto cb = makeProgressCallback();
+            [req](const std::string& src, const std::string& dst, FsOps::ProgressInfo& progress,
+                  const FsOps::ProgressCallback& cb, FsOps::Error& err) {
                 return FsOps::move_path(src, dst, progress, cb, err, /*forceCopyFallbackForTests=*/false,
                                         req.preserveOwnership);
             },
@@ -171,11 +300,9 @@ class QtFileOps::Worker : public QObject {
     void performDelete(const FileOpRequest& req) {
         performOperationList(
             req,
-            [this](const std::string& src, const std::string& /*unused*/, FsOps::ProgressInfo& progress,
-                   FsOps::Error& err) {
-                auto cb = makeProgressCallback();
-                return FsOps::delete_path(src, progress, cb, err);
-            },
+            [](const std::string& src, const std::string& /*unused*/, FsOps::ProgressInfo& progress,
+               const FsOps::ProgressCallback& cb,
+               FsOps::Error& err) { return FsOps::delete_path(src, progress, cb, err); },
             /*needsDestination=*/false);
     }
 

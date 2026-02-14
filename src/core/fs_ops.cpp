@@ -327,7 +327,6 @@ bool copy_entry_at(int srcDir,
         return false;
     }
 
-    progress.currentPath = "";  // not tracking full path to avoid extra allocations
     if (!should_continue(cb, progress)) {
         err.code = ECANCELED;
         err.message = "Cancelled";
@@ -442,7 +441,6 @@ bool delete_at(int dirfd, const char* name, ProgressInfo& progress, const Progre
         return false;
     }
 
-    progress.currentPath = "";
     if (!should_continue(cb, progress)) {
         err.code = ECANCELED;
         err.message = "Cancelled";
@@ -491,6 +489,13 @@ bool delete_at(int dirfd, const char* name, ProgressInfo& progress, const Progre
             set_error(err, "unlinkat");
             return false;
         }
+    }
+
+    progress.filesDone += 1;
+    if (!should_continue(cb, progress)) {
+        err.code = ECANCELED;
+        err.message = "Cancelled";
+        return false;
     }
     return true;
 }
@@ -763,7 +768,6 @@ bool delete_path(const std::string& path, ProgressInfo& progress, const Progress
     if (!delete_at(parentFd.fd, name.c_str(), progress, callback, err, 0)) {
         return false;
     }
-    progress.filesDone += 1;
     return true;
 }
 
