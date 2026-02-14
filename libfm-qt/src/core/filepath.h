@@ -56,7 +56,12 @@ class LIBFM_QT_API FilePath {
 
     bool isParentOf(const FilePath& other) const { return g_file_has_parent(other.gfile_.get(), gfile_.get()); }
 
-    bool isPrefixOf(const FilePath& other) const { return g_file_has_prefix(other.gfile_.get(), gfile_.get()); }
+    bool isPrefixOf(const FilePath& other) const {
+        if (!gfile_ || !other.gfile_) {
+            return false;
+        }
+        return g_file_has_prefix(other.gfile_.get(), gfile_.get());
+    }
 
     FilePath child(const char* name) const { return FilePath{g_file_get_child(gfile_.get(), name), false}; }
 

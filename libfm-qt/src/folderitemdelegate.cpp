@@ -28,6 +28,7 @@
 #include <QTextLayout>
 #include <QTextOption>
 #include <QTextLine>
+#include <QTextDocument>
 #include <QLineEdit>
 #include <QTextEdit>
 #include <QTimer>
@@ -482,7 +483,8 @@ void FolderItemDelegate::setEditorData(QWidget* editor, const QModelIndex& index
         else {
             end = currentName.lastIndexOf(QLatin1StringView("."));
         }
-        cur.setPosition(end, QTextCursor::KeepAnchor);
+        const int maxPos = std::max(0, textEdit->document()->characterCount() - 1);
+        cur.setPosition(std::clamp(end, 0, maxPos), QTextCursor::KeepAnchor);
         textEdit->setTextCursor(cur);
     }
     else if (QLineEdit* lineEdit = qobject_cast<QLineEdit*>(editor)) {

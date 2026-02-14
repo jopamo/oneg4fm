@@ -77,7 +77,6 @@ MainWindow::MainWindow(Panel::FilePath path)
 
     if (ui.statusbar) {
         ui.statusbar->setSizeGripEnabled(false);
-        ui.statusbar->addPermanentWidget(fsInfoLabel_);
 
         if (geteuid() == 0) {
             auto* rootWarning = new QLabel(tr("Running as root. Privilege escalation is disabled."), this);
@@ -85,8 +84,10 @@ MainWindow::MainWindow(Panel::FilePath path)
             rootWarning->setAlignment(Qt::AlignCenter);
             rootWarning->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
             UiStyle::applyWarningLabel(rootWarning);
-            ui.statusbar->insertPermanentWidget(0, rootWarning, 1);
+            ui.statusbar->addPermanentWidget(rootWarning, 1);
         }
+
+        ui.statusbar->addPermanentWidget(fsInfoLabel_);
     }
 
     Settings& settings = appSettings();

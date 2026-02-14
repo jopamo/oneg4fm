@@ -384,7 +384,8 @@ void PathBar::closeEditor() {
     // but the path-edit may not disappear until the menu is closed. So, we hide it here.
     // However, since hiding the path-edit makes it lose focus and emit editingFinished(),
     // we should first disconnect from it to avoid recursive calling of the current function.
-    tempPathEdit_->disconnect();
+    QObject::disconnect(tempPathEdit_, &PathEdit::returnPressed, this, &PathBar::onReturnPressed);
+    QObject::disconnect(tempPathEdit_, &PathEdit::editingFinished, this, &PathBar::closeEditor);
     tempPathEdit_->setVisible(false);
     delete layout()->replaceWidget(tempPathEdit_, scrollArea_, Qt::FindDirectChildrenOnly);
     scrollArea_->show();

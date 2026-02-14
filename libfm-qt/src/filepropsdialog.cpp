@@ -22,7 +22,6 @@
 #include "utilities.h"
 #include "fileoperation.h"
 #include <QStringBuilder>
-#include <QStringListModel>
 #include <QMessageBox>
 #include <QDateTime>
 #include <QStandardPaths>
@@ -166,10 +165,12 @@ void FilePropsDialog::initPermissionsPage() {
         comboItems.append(tr("Read and write"));
     }
     comboItems.append(tr("Forbidden"));
-    QStringListModel* comboModel = new QStringListModel(comboItems, this);
-    ui->ownerPerm->setModel(comboModel);
-    ui->groupPerm->setModel(comboModel);
-    ui->otherPerm->setModel(comboModel);
+    ui->ownerPerm->clear();
+    ui->groupPerm->clear();
+    ui->otherPerm->clear();
+    ui->ownerPerm->addItems(comboItems);
+    ui->groupPerm->addItems(comboItems);
+    ui->otherPerm->addItems(comboItems);
 
     // owner
     ownerPermSel = ACCESS_NO_CHANGE;

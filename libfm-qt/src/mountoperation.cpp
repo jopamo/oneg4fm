@@ -348,11 +348,15 @@ void MountOperation::prepareUnmount(GMount* mount) {
     /* FIXME: This cannot cover 100% cases since symlinks are not checked.
      * There may be other cases that cwd is actually under mount root
      * but checking prefix is not enough. We already did our best, though. */
-    if (g_file_has_prefix(cwd, root)) {
+    if (cwd != nullptr && root != nullptr && g_file_has_prefix(cwd, root)) {
         g_chdir("/");
     }
-    g_object_unref(cwd);
-    g_object_unref(root);
+    if (cwd != nullptr) {
+        g_object_unref(cwd);
+    }
+    if (root != nullptr) {
+        g_object_unref(root);
+    }
 }
 
 // block the operation used an internal QEventLoop and returns
