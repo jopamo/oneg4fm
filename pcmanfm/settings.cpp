@@ -59,7 +59,7 @@ Settings::Settings()
       sidePaneMode_(Panel::SidePane::ModePlaces),
       showMenuBar_(true),
       splitView_(false),
-      viewMode_(Panel::FolderView::IconMode),
+      viewMode_(Panel::FolderView::DetailedListMode),
       showHidden_(false),
       sortOrder_(Qt::AscendingOrder),
       sortColumn_(Panel::FolderModel::ColumnFileName),
@@ -230,7 +230,7 @@ bool Settings::loadFile(QString filePath) {
 
     settings.beginGroup(QStringLiteral("FolderView"));
     viewMode_ = FolderSettings::viewModeFromString(
-        settings.value(QStringLiteral("Mode"), Panel::FolderView::IconMode).toString());
+        settings.value(QStringLiteral("Mode"), QStringLiteral("detailed")).toString());
     showHidden_ = settings.value(QStringLiteral("ShowHidden"), false).toBool();
     sortOrder_ = FolderSettings::sortOrderFromString(settings.value(QStringLiteral("SortOrder")).toString());
     sortColumn_ = FolderSettings::sortColumnFromString(settings.value(QStringLiteral("SortColumn")).toString());
@@ -620,7 +620,7 @@ Panel::FolderView::ViewMode FolderSettings::viewModeFromString(const QString& st
         ret = Panel::FolderView::ThumbnailMode;
     }
     else {
-        ret = Panel::FolderView::IconMode;
+        ret = Panel::FolderView::DetailedListMode;
     }
     return ret;
 }

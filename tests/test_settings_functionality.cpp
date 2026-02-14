@@ -38,7 +38,7 @@ void TestSettingsFunctionality::testSettingsInitialization() {
     QVERIFY(settings.showMenuBar());
     QVERIFY(!settings.splitView());
 
-    QCOMPARE(settings.viewMode(), Panel::FolderView::IconMode);
+    QCOMPARE(settings.viewMode(), Panel::FolderView::DetailedListMode);
     QVERIFY(!settings.showHidden());
     QCOMPARE(settings.sortOrder(), Qt::AscendingOrder);
     QCOMPARE(settings.sortColumn(), Panel::FolderModel::ColumnFileName);

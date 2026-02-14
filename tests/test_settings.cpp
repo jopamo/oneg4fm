@@ -42,8 +42,8 @@ void TestSettings::testViewModeFromString() {
     QCOMPARE(FolderSettings::viewModeFromString("thumbnail"), Panel::FolderView::ThumbnailMode);
 
     // Test default case
-    QCOMPARE(FolderSettings::viewModeFromString("invalid"), Panel::FolderView::IconMode);
-    QCOMPARE(FolderSettings::viewModeFromString(""), Panel::FolderView::IconMode);
+    QCOMPARE(FolderSettings::viewModeFromString("invalid"), Panel::FolderView::DetailedListMode);
+    QCOMPARE(FolderSettings::viewModeFromString(""), Panel::FolderView::DetailedListMode);
 }
 
 void TestSettings::testSortOrderFromString() {
@@ -90,7 +90,7 @@ void TestSettings::testFolderSettings() {
     QVERIFY(!settings.isCustomized());
     QCOMPARE(settings.sortOrder(), Qt::AscendingOrder);
     QCOMPARE(settings.sortColumn(), Fm::FolderModel::ColumnFileName);
-    QCOMPARE(settings.viewMode(), Fm::FolderView::IconMode);
+    QCOMPARE(settings.viewMode(), Fm::FolderView::DetailedListMode);
     QVERIFY(!settings.showHidden());
     QVERIFY(settings.sortFolderFirst());
     QVERIFY(settings.sortCaseSensitive());

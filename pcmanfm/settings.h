@@ -36,7 +36,7 @@ class FolderSettings {
           // the same as those of their corresponding variables in Settings:
           sortOrder_(Qt::AscendingOrder),
           sortColumn_(Panel::FolderModel::ColumnFileName),
-          viewMode_(Panel::FolderView::IconMode),
+          viewMode_(Panel::FolderView::DetailedListMode),
           showHidden_(false),
           sortFolderFirst_(true),
           sortCaseSensitive_(true),
