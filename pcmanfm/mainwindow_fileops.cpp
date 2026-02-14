@@ -27,6 +27,7 @@
 #include <QLineEdit>
 #include <QMessageBox>
 #include <QObject>
+#include <QProgressDialog>
 #include <QtGlobal>
 #include <unistd.h>
 #include <memory>
@@ -237,6 +238,44 @@ void MainWindow::on_actionDelete_triggered() {
     // Keep the async backend alive until it finishes.
     IFileOps* fileOpsPtr = fileOps.release();
     fileOpsPtr->setParent(this);
+
+    auto* progressDialog = new QProgressDialog(tr("Deleting files..."), tr("Cancel"), 0, 0, this);
+    progressDialog->setWindowModality(Qt::WindowModal);
+    progressDialog->setAutoClose(false);
+    progressDialog->setAutoReset(false);
+    progressDialog->setMinimumDuration(0);
+    progressDialog->setValue(0);
+    progressDialog->setLabelText(tr("Deleting files..."));
+
+    const auto cancelledByUser = std::make_shared<bool>(false);
+    connect(progressDialog, &QProgressDialog::canceled, this, [fileOpsPtr, cancelledByUser] {
+        *cancelledByUser = true;
+        fileOpsPtr->cancel();
+    });
+    connect(fileOpsPtr, &IFileOps::progress, progressDialog, [progressDialog](const FileOpProgress& info) {
+        if (info.filesTotal > 0) {
+            if (progressDialog->maximum() != info.filesTotal) {
+                progressDialog->setMaximum(info.filesTotal);
+            }
+            progressDialog->setValue(qMin(info.filesDone, info.filesTotal));
+        }
+        else {
+            progressDialog->setMaximum(0);  // Busy indicator when total is unknown.
+        }
+        if (!info.currentPath.isEmpty()) {
+            progressDialog->setLabelText(tr("Deleting %1").arg(info.currentPath));
+        }
+    });
+    connect(fileOpsPtr, &IFileOps::finished, this,
+            [this, progressDialog, cancelledByUser](bool success, const QString& errorMessage) {
+                progressDialog->hide();
+                progressDialog->deleteLater();
+                if (!success && !*cancelledByUser) {
+                    QMessageBox::warning(
+                        this, tr("Delete Failed"),
+                        errorMessage.isEmpty() ? tr("The selected files could not be deleted.") : errorMessage);
+                }
+            });
     connect(fileOpsPtr, &IFileOps::finished, fileOpsPtr, &QObject::deleteLater);
 
     FileOpRequest req;
@@ -247,6 +286,7 @@ void MainWindow::on_actionDelete_triggered() {
     req.overwriteExisting = false;
     req.preserveOwnership = shouldPreserveOwnershipForOps();
 
+    progressDialog->show();
     fileOpsPtr->start(req);
 }
 
