@@ -56,7 +56,9 @@ CStrPtr Thumbnailer::commandForUri(const char* uri, const char* output_file, gui
                         g_free(quoted);
                         break;
                     case 'o':
-                        g_string_append(cmd_line, output_file);
+                        quoted = g_shell_quote(output_file);
+                        g_string_append(cmd_line, quoted);
+                        g_free(quoted);
                         break;
                     default:
                         g_string_append_c(cmd_line, '%');

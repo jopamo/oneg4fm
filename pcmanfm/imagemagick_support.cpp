@@ -99,6 +99,22 @@ bool dimensionsWithinLimits(size_t width, size_t height) {
     return pixelCount <= kMaxDecodedPixels;
 }
 
+bool computeRgbaBufferLayout(size_t width, size_t height, size_t& stride, size_t& bufferSize) {
+    stride = 0;
+    bufferSize = 0;
+
+    if (!multiplyChecked(width, kRgbaChannels, stride)) {
+        return false;
+    }
+    if (!multiplyChecked(stride, height, bufferSize)) {
+        return false;
+    }
+
+    using ByteVector = std::vector<unsigned char>;
+    const size_t maxSize = ByteVector().max_size();
+    return bufferSize <= maxSize;
+}
+
 bool writeFilePosix(const QString& path, const unsigned char* data, size_t size) {
     const QByteArray encoded = QFile::encodeName(path);
     int fd = ::open(encoded.constData(), O_WRONLY | O_CREAT | O_TRUNC | O_CLOEXEC, 0666);
@@ -204,12 +220,8 @@ bool fillBufferFromWand(MagickWand* wand, ImageMagickBuffer& out) {
     MagickSetImageType(wand, TrueColorAlphaType);
 
     size_t stride = 0;
-    if (!multiplyChecked(w, kRgbaChannels, stride)) {
-        return false;
-    }
-
     size_t bufferSize = 0;
-    if (!multiplyChecked(stride, h, bufferSize)) {
+    if (!computeRgbaBufferLayout(w, h, stride, bufferSize)) {
         return false;
     }
 

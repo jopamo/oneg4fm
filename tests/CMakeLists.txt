@@ -84,6 +84,13 @@ pcmanfm_add_test(oneg4fm-browsehistory-tests
         fm-qt6
 )
 
+pcmanfm_add_test(oneg4fm-thumbnailer-tests
+    SOURCES
+        test_thumbnailer.cpp
+    LIBS
+        fm-qt6
+)
+
 pcmanfm_add_test(oneg4fm-disasm-tests
     SOURCES
         disasm_engine_test.cpp
