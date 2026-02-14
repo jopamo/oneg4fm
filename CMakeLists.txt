@@ -13,6 +13,12 @@ set(PCMANFM_QT_VERSION_PATCH 0)
 
 set(PCMANFM_QT_VERSION ${PCMANFM_QT_VERSION_MAJOR}.${PCMANFM_QT_VERSION_MINOR}.${PCMANFM_QT_VERSION_PATCH})
 
+option(BUILD_TESTING "Build test targets" OFF)
+include(CTest)
+if(BUILD_TESTING)
+    enable_testing()
+endif()
+
 # Minimum versions
 set(LIBFMQT_MINIMUM_VERSION "2.3.0")
 set(QT_MINIMUM_VERSION "6.6.0")
@@ -96,10 +102,6 @@ install(
 
 add_subdirectory(config)
 
-# Add tests if BUILD_TESTING is enabled
-option(BUILD_TESTING "Build test targets" OFF)
-include(CTest)
 if(BUILD_TESTING)
-    enable_testing()
     add_subdirectory(tests)
 endif()

@@ -243,49 +243,57 @@ endif()
 set_directory_properties(PROPERTIES CLEAN_NO_CUSTOM true)
 
 
-set(TEST_LIBRARIES
-    Qt6::Core
-    Qt6::Widgets
-    ${FM_LIBRARIES}
-    ${LIBFM_QT_LIBRARY_NAME}
-)
-# some simple test cases
-add_executable("test-folder"
-    tests/test-folder.cpp
-)
-target_link_libraries("test-folder" ${TEST_LIBRARIES})
-
-add_executable("test-folderview"
-    tests/test-folderview.cpp
-)
-target_link_libraries("test-folderview" ${TEST_LIBRARIES})
-
-add_executable("test-filedialog"
-    tests/test-filedialog.cpp
-)
-target_link_libraries("test-filedialog" ${TEST_LIBRARIES})
-
-add_executable("test-volumemanager"
-    tests/test-volumemanager.cpp
-)
-target_link_libraries("test-volumemanager" ${TEST_LIBRARIES})
-
-add_executable("test-placesview"
-    tests/test-placesview.cpp
-)
-target_link_libraries("test-placesview" ${TEST_LIBRARIES})
-
-set(_fmqt_test_targets
-    test-folder
-    test-folderview
-    test-filedialog
-    test-volumemanager
-    test-placesview
-)
-
-foreach(test_target IN LISTS _fmqt_test_targets)
-    target_include_directories(${test_target} PRIVATE
-        "${LIBFM_QT_INTREE_INCLUDE_DIR}/libfm-qt6"
-        "${CMAKE_CURRENT_BINARY_DIR}"
+if(BUILD_TESTING)
+    set(TEST_LIBRARIES
+        Qt6::Core
+        Qt6::Widgets
+        ${FM_LIBRARIES}
+        ${LIBFM_QT_LIBRARY_NAME}
     )
-endforeach()
+    # some simple test cases
+    add_executable("test-folder"
+        tests/test-folder.cpp
+    )
+    target_link_libraries("test-folder" ${TEST_LIBRARIES})
+
+    add_executable("test-folderview"
+        tests/test-folderview.cpp
+    )
+    target_link_libraries("test-folderview" ${TEST_LIBRARIES})
+
+    add_executable("test-filedialog"
+        tests/test-filedialog.cpp
+    )
+    target_link_libraries("test-filedialog" ${TEST_LIBRARIES})
+
+    add_executable("test-volumemanager"
+        tests/test-volumemanager.cpp
+    )
+    target_link_libraries("test-volumemanager" ${TEST_LIBRARIES})
+
+    add_executable("test-placesview"
+        tests/test-placesview.cpp
+    )
+    target_link_libraries("test-placesview" ${TEST_LIBRARIES})
+
+    set(_fmqt_test_targets
+        test-folder
+        test-folderview
+        test-filedialog
+        test-volumemanager
+        test-placesview
+    )
+
+    foreach(test_target IN LISTS _fmqt_test_targets)
+        target_include_directories(${test_target} PRIVATE
+            "${LIBFM_QT_INTREE_INCLUDE_DIR}/libfm-qt6"
+            "${CMAKE_CURRENT_BINARY_DIR}"
+        )
+
+        add_test(NAME ${test_target} COMMAND ${test_target})
+        set_tests_properties(${test_target} PROPERTIES
+            ENVIRONMENT "QT_QPA_PLATFORM=offscreen;FM_QT_DEMO_TEST_QUIT_MS=300"
+            TIMEOUT 20
+        )
+    endforeach()
+endif()

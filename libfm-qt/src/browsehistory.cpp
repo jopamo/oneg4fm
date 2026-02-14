@@ -18,6 +18,7 @@
  */
 
 #include "browsehistory.h"
+#include <algorithm>
 
 namespace Fm {
 
@@ -26,26 +27,24 @@ BrowseHistory::BrowseHistory() : currentIndex_(0), maxCount_(10) {}
 BrowseHistory::~BrowseHistory() {}
 
 void BrowseHistory::add(Fm::FilePath path, int scrollPos) {
-    int lastIndex = items_.size() - 1;
+    const int effectiveMaxCount = std::max(maxCount_, 1);
+    int lastIndex = static_cast<int>(items_.size()) - 1;
     if (currentIndex_ < lastIndex) {
         // if we're not at the last item, remove items after the current one.
         items_.erase(items_.cbegin() + currentIndex_ + 1, items_.cend());
     }
 
-    if (items_.size() + 1 > static_cast<size_t>(maxCount_)) {
+    while (!items_.empty() && items_.size() + 1 > static_cast<size_t>(effectiveMaxCount)) {
         // if there are too many items, remove the oldest one.
-        // FIXME: what if currentIndex_ == 0? remove the last item instead?
-        if (currentIndex_ == 0) {
-            items_.erase(items_.cbegin() + lastIndex);
-        }
-        else {
-            items_.erase(items_.cbegin());
+        items_.erase(items_.cbegin());
+        if (currentIndex_ > 0) {
             --currentIndex_;
         }
     }
+
     // add a path and current scroll position to browse history
     items_.push_back(BrowseHistoryItem(path, scrollPos));
-    currentIndex_ = items_.size() - 1;
+    currentIndex_ = static_cast<int>(items_.size()) - 1;
 }
 
 void BrowseHistory::setCurrentIndex(int index) {
@@ -78,9 +77,15 @@ int BrowseHistory::forward() {
 }
 
 void BrowseHistory::setMaxCount(int maxCount) {
-    maxCount_ = maxCount;
-    if (items_.size() > static_cast<size_t>(maxCount)) {
-        // TODO: remove some items
+    maxCount_ = std::max(maxCount, 1);
+
+    if (items_.size() > static_cast<size_t>(maxCount_)) {
+        const size_t itemsToRemove = items_.size() - static_cast<size_t>(maxCount_);
+        items_.erase(items_.cbegin(), items_.cbegin() + itemsToRemove);
+        currentIndex_ = std::max(0, currentIndex_ - static_cast<int>(itemsToRemove));
+    }
+    if (!items_.empty() && static_cast<size_t>(currentIndex_) >= items_.size()) {
+        currentIndex_ = static_cast<int>(items_.size()) - 1;
     }
 }
 

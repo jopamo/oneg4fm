@@ -18,11 +18,13 @@
  */
 #include <QApplication>
 #include <QDir>
+#include <QTimer>
 #include <QDebug>
 #include "../core/volumemanager.h"
 
 int main(int argc, char** argv) {
     QApplication app(argc, argv);
+    const int quitDelayMs = qEnvironmentVariableIntValue("FM_QT_DEMO_TEST_QUIT_MS");
 
     auto vm = Fm::VolumeManager::globalInstance();
 
@@ -34,6 +36,10 @@ int main(int argc, char** argv) {
     for (auto& item : vm->volumes()) {
         auto name = item.name();
         qDebug() << "list volume:" << name.get();
+    }
+
+    if (quitDelayMs > 0) {
+        QTimer::singleShot(quitDelayMs, &app, &QCoreApplication::quit);
     }
 
     return app.exec();

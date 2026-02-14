@@ -19,6 +19,7 @@
 #include <QApplication>
 #include <QMainWindow>
 #include <QToolBar>
+#include <QTimer>
 #include <QDebug>
 #include "../core/folder.h"
 #include "../foldermodel.h"
@@ -30,6 +31,7 @@
 
 int main(int argc, char** argv) {
     QApplication app(argc, argv);
+    const int quitDelayMs = qEnvironmentVariableIntValue("FM_QT_DEMO_TEST_QUIT_MS");
 
     Fm::LibFmQt contex;
     QMainWindow win;
@@ -62,5 +64,8 @@ int main(int argc, char** argv) {
     });
 
     win.show();
+    if (quitDelayMs > 0) {
+        QTimer::singleShot(quitDelayMs, &app, &QCoreApplication::quit);
+    }
     return app.exec();
 }

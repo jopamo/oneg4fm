@@ -77,6 +77,13 @@ pcmanfm_add_test(pcmanfm-qt-windowed-reader-tests
         ../src/core/windowed_file_reader.cpp
 )
 
+pcmanfm_add_test(pcmanfm-qt-browsehistory-tests
+    SOURCES
+        test_browsehistory.cpp
+    LIBS
+        fm-qt6
+)
+
 pcmanfm_add_test(pcmanfm-qt-disasm-tests
     SOURCES
         disasm_engine_test.cpp

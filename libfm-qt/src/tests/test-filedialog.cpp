@@ -19,6 +19,7 @@
 #include <QApplication>
 #include <QMainWindow>
 #include <QToolBar>
+#include <QTimer>
 #include <QDebug>
 #include "../core/folder.h"
 #include "../foldermodel.h"
@@ -31,6 +32,7 @@
 
 int main(int argc, char** argv) {
     QApplication app(argc, argv);
+    const int quitDelayMs = qEnvironmentVariableIntValue("FM_QT_DEMO_TEST_QUIT_MS");
 
     Fm::LibFmQt contex;
 
@@ -58,6 +60,10 @@ int main(int argc, char** argv) {
     // dlg.setFileMode(QFileDialog::Directory);
     dlg.setNameFilters(QStringList() << QStringLiteral("All (*)") << QStringLiteral("Text (*.txt)")
                                      << QStringLiteral("Images (*.gif *.jpeg *.jpg)"));
+
+    if (quitDelayMs > 0) {
+        QTimer::singleShot(quitDelayMs, &dlg, &QDialog::reject);
+    }
 
     dlg.exec();
     qDebug() << "selected files:" << dlg.selectedFiles();
