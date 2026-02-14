@@ -350,6 +350,43 @@ void TabPage::freeFolder() {
     }
 }
 
+QScrollBar* TabPage::historyScrollBar() const {
+    if (!folderView_) {
+        return nullptr;
+    }
+    auto* itemView = folderView_->childView();
+    if (!itemView) {
+        return nullptr;
+    }
+    if (folderView_->viewMode() == Panel::FolderView::CompactMode) {
+        return itemView->horizontalScrollBar();
+    }
+    return itemView->verticalScrollBar();
+}
+
+int TabPage::currentHistoryScrollPos() const {
+    if (QScrollBar* sbar = historyScrollBar()) {
+        return sbar->value();
+    }
+    return 0;
+}
+
+void TabPage::saveCurrentHistoryScrollPos() {
+    if (history_.size() == 0) {
+        return;
+    }
+    history_.currentItem().setScrollPos(currentHistoryScrollPos());
+}
+
+void TabPage::restoreCurrentHistoryScrollPos() {
+    if (history_.size() == 0) {
+        return;
+    }
+    if (QScrollBar* sbar = historyScrollBar()) {
+        sbar->setValue(browseHistory().currentScrollPos());
+    }
+}
+
 void TabPage::onFolderStartLoading() {
     if (folderModel_) {
         disconnect(folderModel_, &Panel::FolderModel::filesAdded, this, &TabPage::onFilesAdded);
@@ -398,7 +435,7 @@ void TabPage::onUiUpdated() {
             folderView_->selectionModel()->setCurrentIndex(firstIndx, QItemSelectionModel::NoUpdate);
         }
         // scroll to recorded position
-        folderView_->childView()->verticalScrollBar()->setValue(browseHistory().currentScrollPos());
+        restoreCurrentHistoryScrollPos();
     }
 
     if (folderModel_) {
@@ -620,8 +657,7 @@ void TabPage::chdir(Panel::FilePath newPath, bool addHistory) {
 
         if (addHistory) {
             // store current scroll pos in the browse history
-            BrowseHistoryItem& item = history_.currentItem();
-            item.setScrollPos(folderView_->childView()->verticalScrollBar()->value());
+            saveCurrentHistoryScrollPos();
         }
 
         // free the previous model
@@ -708,8 +744,7 @@ void TabPage::reload() {
         lastFolderPath_ = Panel::FilePath();
 
         // but remember the current scroll position
-        BrowseHistoryItem& item = history_.currentItem();
-        item.setScrollPos(folderView_->childView()->verticalScrollBar()->value());
+        saveCurrentHistoryScrollPos();
 
         folder_->reload();
     }
@@ -758,16 +793,14 @@ void TabPage::onSelChanged() {
 }
 
 void TabPage::backward() {
-    BrowseHistoryItem& item = history_.currentItem();
-    item.setScrollPos(folderView_->childView()->verticalScrollBar()->value());
+    saveCurrentHistoryScrollPos();
 
     history_.backward();
     chdir(history_.currentPath(), false);
 }
 
 void TabPage::forward() {
-    BrowseHistoryItem& item = history_.currentItem();
-    item.setScrollPos(folderView_->childView()->verticalScrollBar()->value());
+    saveCurrentHistoryScrollPos();
 
     history_.forward();
     chdir(history_.currentPath(), false);
@@ -775,8 +808,7 @@ void TabPage::forward() {
 
 void TabPage::jumpToHistory(int index) {
     if (index >= 0 && static_cast<size_t>(index) < history_.size()) {
-        BrowseHistoryItem& item = history_.currentItem();
-        item.setScrollPos(folderView_->childView()->verticalScrollBar()->value());
+        saveCurrentHistoryScrollPos();
 
         history_.setCurrentIndex(index);
         chdir(history_.currentPath(), false);

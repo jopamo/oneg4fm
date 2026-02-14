@@ -33,10 +33,12 @@
 #include "pathedit.h"
 
 #include <algorithm>
+#include <cmath>
 
 namespace Fm {
 
-PathBar::PathBar(QWidget* parent) : QWidget(parent), tempPathEdit_(nullptr), toggledBtn_(nullptr) {
+PathBar::PathBar(QWidget* parent)
+    : QWidget(parent), tempPathEdit_(nullptr), toggledBtn_(nullptr), wheelAngleRemainder_(0) {
     QHBoxLayout* topLayout = new QHBoxLayout(this);
     topLayout->setContentsMargins(0, 0, 0, 0);
     topLayout->setSpacing(0);
@@ -130,19 +132,47 @@ bool PathBar::eventFilter(QObject* watched, QEvent* event) {
     if (event->type() == QEvent::Wheel &&
         (watched == buttonsWidget_ || watched == scrollToStart_ || watched == scrollToEnd_)) {
         QWheelEvent* we = static_cast<QWheelEvent*>(event);
-        QAbstractSlider::SliderAction action = QAbstractSlider::SliderNoAction;
-        int vDelta = we->angleDelta().y();
-        if (vDelta > 0) {
-            if (scrollToStart_->isEnabled()) {
-                action = QAbstractSlider::SliderSingleStepSub;
+        QScrollBar* hbar = scrollArea_->horizontalScrollBar();
+        if (!hbar) {
+            return true;
+        }
+
+        const auto dominantDelta = [](const QPoint& delta) {
+            return std::abs(delta.x()) > std::abs(delta.y()) ? delta.x() : delta.y();
+        };
+
+        const int pixelDelta = dominantDelta(we->pixelDelta());
+        if (pixelDelta != 0) {
+            const int oldValue = hbar->value();
+            hbar->setValue(std::clamp(oldValue - pixelDelta, hbar->minimum(), hbar->maximum()));
+            wheelAngleRemainder_ = 0;
+            return true;
+        }
+
+        const int angleDelta = dominantDelta(we->angleDelta());
+        if (angleDelta == 0) {
+            return true;
+        }
+
+        wheelAngleRemainder_ += angleDelta;
+        while (std::abs(wheelAngleRemainder_) >= 120) {
+            if (wheelAngleRemainder_ > 0) {
+                if (!scrollToStart_->isEnabled()) {
+                    wheelAngleRemainder_ = 0;
+                    break;
+                }
+                hbar->triggerAction(QAbstractSlider::SliderSingleStepSub);
+                wheelAngleRemainder_ -= 120;
+            }
+            else {
+                if (!scrollToEnd_->isEnabled()) {
+                    wheelAngleRemainder_ = 0;
+                    break;
+                }
+                hbar->triggerAction(QAbstractSlider::SliderSingleStepAdd);
+                wheelAngleRemainder_ += 120;
             }
         }
-        else if (vDelta < 0) {
-            if (scrollToEnd_->isEnabled()) {
-                action = QAbstractSlider::SliderSingleStepAdd;
-            }
-        }
-        scrollArea_->horizontalScrollBar()->triggerAction(action);
         return true;
     }
     return QWidget::eventFilter(watched, event);

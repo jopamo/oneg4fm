@@ -42,6 +42,7 @@ class View : public Panel::FolderView {
     ~View() override;
 
     void updateFromSettings(Settings& settings);
+    void setViewMode(Panel::FolderView::ViewMode mode);
     void setModel(Panel::ProxyFolderModel* _model);
 
     QSize getMargins() const { return Panel::FolderView::getMargins(); }

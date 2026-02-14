@@ -81,6 +81,7 @@ class LIBFM_QT_API PathBar : public QWidget {
 
     Fm::FilePath currentPath_;  // currently active path
     PathButton* toggledBtn_;
+    int wheelAngleRemainder_;
 };
 
 }  // namespace Fm

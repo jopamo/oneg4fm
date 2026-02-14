@@ -28,6 +28,8 @@
 #include "settings.h"
 #include "imagemagick_qt.h"
 
+class QScrollBar;
+
 namespace PCManFM {
 
 class Launcher;
@@ -233,6 +235,10 @@ class TabPage : public QWidget {
 
    private:
     void freeFolder();
+    QScrollBar* historyScrollBar() const;
+    int currentHistoryScrollPos() const;
+    void saveCurrentHistoryScrollPos();
+    void restoreCurrentHistoryScrollPos();
     QString formatStatusText();
     void localizeTitle(const Panel::FilePath& path);
 

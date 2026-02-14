@@ -210,6 +210,15 @@ View::View(Panel::FolderView::ViewMode mode, QWidget* parent) : Panel::FolderVie
 
 View::~View() = default;
 
+void View::setViewMode(Panel::FolderView::ViewMode mode) {
+    const Panel::FolderView::ViewMode prevMode = viewMode();
+    Panel::FolderView::setViewMode(mode);
+    if (prevMode != viewMode()) {
+        setupThumbnailHooks();
+    }
+    scheduleThumbnailPrefetch();
+}
+
 void View::setModel(Panel::ProxyFolderModel* _model) {
     Panel::FolderView::setModel(_model);
     setupThumbnailHooks();

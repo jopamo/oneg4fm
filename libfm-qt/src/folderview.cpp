@@ -864,6 +864,8 @@ FolderView::FolderView(FolderView::ViewMode _mode, QWidget* parent)
       shadowHidden_(false),
       scrollPerPixel_(true),
       ctrlRightClick_(false),
+      smoothWheelRemainderVertical_(0),
+      smoothWheelRemainderHorizontal_(0),
       smoothScrollTimer_(nullptr) {
     iconSize_[IconMode - FirstViewMode] = QSize(48, 48);
     iconSize_[CompactMode - FirstViewMode] = QSize(24, 24);
@@ -921,6 +923,8 @@ void FolderView::setScrollPerPixel(bool perPixel) {
         return;
     }
     scrollPerPixel_ = perPixel;
+    smoothWheelRemainderVertical_ = 0;
+    smoothWheelRemainderHorizontal_ = 0;
     if (!scrollPerPixel_ && smoothScrollTimer_ != nullptr) {
         disconnect(smoothScrollTimer_, &QTimer::timeout, this, &FolderView::scrollSmoothly);
         smoothScrollTimer_->stop();
@@ -1749,8 +1753,10 @@ bool FolderView::eventFilter(QObject* watched, QEvent* event) {
 
                 // Control scrolling with mouse wheel
                 QWheelEvent* we = static_cast<QWheelEvent*>(event);
-                QPoint angleDelta = we->angleDelta();
-                bool horizontal(std::abs(angleDelta.x()) > std::abs(angleDelta.y()));
+                const QPoint pixelDelta = we->pixelDelta();
+                const QPoint angleDelta = we->angleDelta();
+                const QPoint dominantDelta = pixelDelta.isNull() ? angleDelta : pixelDelta;
+                const bool horizontal(std::abs(dominantDelta.x()) > std::abs(dominantDelta.y()));
                 if (event->spontaneous() &&
                     we->source() == Qt::MouseEventNotSynthesized
                     // To have a simpler code, we control horizontal scrolling with mouse wheel
@@ -1758,8 +1764,27 @@ bool FolderView::eventFilter(QObject* watched, QEvent* event) {
                     && (horizontalListView || !horizontal)) {
                     QScrollBar* sbar = horizontalListView ? view->horizontalScrollBar() : view->verticalScrollBar();
                     if (sbar && sbar->isVisible()) {
+                        if (scrollPerPixel_) {
+                            const int pixelScrollDelta = horizontal ? pixelDelta.x() : pixelDelta.y();
+                            if (pixelScrollDelta != 0) {
+                                const int oldValue = sbar->value();
+                                const int newValue =
+                                    std::clamp(oldValue - pixelScrollDelta, sbar->minimum(), sbar->maximum());
+                                if (newValue != oldValue) {
+                                    sbar->setValue(newValue);
+                                    smoothWheelRemainderVertical_ = 0;
+                                    smoothWheelRemainderHorizontal_ = 0;
+                                    return true;
+                                }
+                                break;
+                            }
+                        }
+
                         // first get the angle delta and customize it according to our needs
                         int delta = horizontal ? angleDelta.x() : angleDelta.y();
+                        if (delta == 0) {
+                            break;
+                        }
                         int origDelta = delta;
                         if (QApplication::wheelScrollLines() > 1) {
                             /* Scroll with minimum speed when
@@ -1799,13 +1824,11 @@ bool FolderView::eventFilter(QObject* watched, QEvent* event) {
                             return true;
                         }
                         else {
-                            // NOTE: Some touchpad devices may trigger wheel events with angle deltas
-                            // less than "scrollAnimFrames", resulting in jumpy movements. Therefore,
-                            // we wait until the total delta value is enough.
-                            static int _delta = 0;
-                            _delta += delta;
-                            if (abs(_delta) < scrollAnimFrames) {
-                                return true;
+                            // For tiny angle deltas, let Qt's default handling process the wheel event.
+                            if (std::abs(delta) < scrollAnimFrames) {
+                                smoothWheelRemainderVertical_ = 0;
+                                smoothWheelRemainderHorizontal_ = 0;
+                                break;
                             }
 
                             if (!smoothScrollTimer_) {
@@ -1813,15 +1836,19 @@ bool FolderView::eventFilter(QObject* watched, QEvent* event) {
                                 connect(smoothScrollTimer_, &QTimer::timeout, this, &FolderView::scrollSmoothly);
                             }
 
+                            int& pendingDelta =
+                                horizontalListView ? smoothWheelRemainderHorizontal_ : smoothWheelRemainderVertical_;
+                            pendingDelta += delta;
+
                             // set the data for smooth scrolling
                             scrollData data;
-                            data.delta = _delta;
+                            data.delta = pendingDelta;
                             data.leftFrames = scrollAnimFrames;
                             queuedScrollSteps_.append(data);
                             if (!smoothScrollTimer_->isActive()) {
                                 smoothScrollTimer_->start(1000 / SCROLL_FRAMES_PER_SEC);
                             }
-                            _delta = 0;
+                            pendingDelta = 0;
                             return true;
                         }
                     }

@@ -16,6 +16,7 @@
 
 #include <algorithm>
 #include <cctype>
+#include <limits>
 #include <vector>
 
 namespace PCManFM {
@@ -519,8 +520,11 @@ void HexEditorView::updateScrollbars() {
     const QFontMetrics fm(font());
     const int lineHeight = fm.height();
     const int rowsVisible = std::max(1, viewport()->height() / lineHeight);
-    const int totalRows =
-        static_cast<int>((doc_->size() + static_cast<std::uint64_t>(bytesPerRow_) - 1) / bytesPerRow_);
+    const std::uint64_t totalRows64 =
+        (doc_->size() + static_cast<std::uint64_t>(bytesPerRow_) - 1) / static_cast<std::uint64_t>(bytesPerRow_);
+    const int totalRows = totalRows64 > static_cast<std::uint64_t>(std::numeric_limits<int>::max())
+                              ? std::numeric_limits<int>::max()
+                              : static_cast<int>(totalRows64);
     verticalScrollBar()->setPageStep(rowsVisible);
     verticalScrollBar()->setRange(0, std::max(0, totalRows - rowsVisible));
 }
@@ -543,14 +547,22 @@ void HexEditorView::moveCursorRelative(std::int64_t delta, bool keepAnchor) {
 void HexEditorView::ensureVisible() {
     const QFontMetrics fm(font());
     const int lineHeight = fm.height();
-    const int row = static_cast<int>(cursorOffset_ / bytesPerRow_);
-    if (row < verticalScrollBar()->value()) {
-        verticalScrollBar()->setValue(row);
+    const std::uint64_t row = cursorOffset_ / static_cast<std::uint64_t>(bytesPerRow_);
+    const int topValue = verticalScrollBar()->value();
+    const std::uint64_t topRow = static_cast<std::uint64_t>(std::max(0, topValue));
+    const auto clampToInt = [](std::uint64_t value) {
+        return value > static_cast<std::uint64_t>(std::numeric_limits<int>::max()) ? std::numeric_limits<int>::max()
+                                                                                   : static_cast<int>(value);
+    };
+
+    if (row < topRow) {
+        verticalScrollBar()->setValue(clampToInt(row));
     }
     else {
         const int rowsVisible = std::max(1, viewport()->height() / lineHeight - 1);
-        if (row > verticalScrollBar()->value() + rowsVisible) {
-            verticalScrollBar()->setValue(row - rowsVisible);
+        const std::uint64_t bottomRow = topRow + static_cast<std::uint64_t>(rowsVisible);
+        if (row > bottomRow) {
+            verticalScrollBar()->setValue(clampToInt(row - static_cast<std::uint64_t>(rowsVisible)));
         }
     }
 }

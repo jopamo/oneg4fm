@@ -197,6 +197,8 @@ class LIBFM_QT_API FolderView : public QWidget {
         int delta;
         int leftFrames;
     };
+    int smoothWheelRemainderVertical_;
+    int smoothWheelRemainderHorizontal_;
     QList<scrollData> queuedScrollSteps_;
     QTimer* smoothScrollTimer_;
 
