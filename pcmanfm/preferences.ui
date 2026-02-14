@@ -896,13 +896,10 @@ and can be any group of custom options.</string>
        </widget>
       </widget>
      </item>
-    </layout>
-   </item>
-   <item>
+   </layout>
+  </item>
+  <item>
     <widget class="QLabel" name="warningLabel">
-     <property name="styleSheet">
-      <string notr="true">background-color:#7d0000; color:white; font-weight:bold; border-radius:3px; margin:2px; padding:5px;</string>
-     </property>
      <property name="lineWidth">
       <number>0</number>
      </property>

@@ -23,6 +23,7 @@
 #include <QVBoxLayout>
 #include <cmath>
 #include "fsqt.h"
+#include "visual_style.h"
 
 namespace {
 
@@ -106,15 +107,18 @@ void FilePropertiesDialog::setupUI() {
     setMinimumSize(480, 360);
 
     auto* mainLayout = new QVBoxLayout(this);
+    PCManFM::UiStyle::applyDialogLayout(mainLayout);
 
     auto* topLayout = new QHBoxLayout();
+    topLayout->setSpacing(PCManFM::UiStyle::kSpacingMd);
     m_iconLabel = new QLabel(this);
     m_iconLabel->setFixedSize(64, 64);
-    topLayout->addWidget(m_iconLabel);
+    topLayout->addWidget(m_iconLabel, 0, Qt::AlignTop);
 
     auto* infoLayout = new QVBoxLayout();
+    infoLayout->setSpacing(PCManFM::UiStyle::kSpacingXs);
     m_nameLabel = new QLabel(this);
-    m_nameLabel->setStyleSheet(QStringLiteral("font-weight: bold; font-size: 14px;"));
+    PCManFM::UiStyle::applySectionTitle(m_nameLabel);
     infoLayout->addWidget(m_nameLabel);
 
     m_typeLabel = new QLabel(this);
@@ -161,6 +165,10 @@ void FilePropertiesDialog::populateFileInfo() {
 void FilePropertiesDialog::setupGeneralTab() {
     auto* generalTab = new QWidget(this);
     auto* layout = new QFormLayout(generalTab);
+    layout->setHorizontalSpacing(PCManFM::UiStyle::kSpacingSm);
+    layout->setVerticalSpacing(PCManFM::UiStyle::kSpacingSm);
+    layout->setContentsMargins(PCManFM::UiStyle::kDialogMargin, PCManFM::UiStyle::kDialogMargin,
+                               PCManFM::UiStyle::kDialogMargin, PCManFM::UiStyle::kDialogMargin);
 
     m_sizeLabel = new QLabel(generalTab);
     m_locationLabel = new QLabel(generalTab);
@@ -197,6 +205,10 @@ void FilePropertiesDialog::setupGeneralTab() {
 void FilePropertiesDialog::setupPermissionsTab() {
     auto* permissionsTab = new QWidget(this);
     auto* layout = new QFormLayout(permissionsTab);
+    layout->setHorizontalSpacing(PCManFM::UiStyle::kSpacingSm);
+    layout->setVerticalSpacing(PCManFM::UiStyle::kSpacingSm);
+    layout->setContentsMargins(PCManFM::UiStyle::kDialogMargin, PCManFM::UiStyle::kDialogMargin,
+                               PCManFM::UiStyle::kDialogMargin, PCManFM::UiStyle::kDialogMargin);
 
     m_ownerEdit = new QLineEdit(permissionsTab);
     m_ownerEdit->setReadOnly(true);
@@ -219,6 +231,8 @@ void FilePropertiesDialog::setupPermissionsTab() {
 
     auto* permWidget = new QWidget(permissionsTab);
     auto* permLayout = new QGridLayout(permWidget);
+    permLayout->setHorizontalSpacing(PCManFM::UiStyle::kSpacingSm);
+    permLayout->setVerticalSpacing(PCManFM::UiStyle::kSpacingXs);
 
     permLayout->setColumnStretch(0, 0);
     permLayout->setColumnStretch(1, 1);

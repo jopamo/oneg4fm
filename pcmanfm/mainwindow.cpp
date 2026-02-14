@@ -30,6 +30,7 @@
 #include <QToolButton>
 #include <unistd.h>
 #include "../src/ui/fsqt.h"
+#include "../src/ui/visual_style.h"
 
 // LibFM-Qt Headers
 #include "panel/panel.h"
@@ -83,9 +84,7 @@ MainWindow::MainWindow(Panel::FilePath path)
             rootWarning->setObjectName(QStringLiteral("rootWarningLabel"));
             rootWarning->setAlignment(Qt::AlignCenter);
             rootWarning->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
-            rootWarning->setStyleSheet(
-                QStringLiteral("#rootWarningLabel { background-color: #b71c1c; color: white; padding: 4px 8px; "
-                               "font-weight: bold; border-radius: 3px; }"));
+            UiStyle::applyWarningLabel(rootWarning);
             ui.statusbar->insertPermanentWidget(0, rootWarning, 1);
         }
     }

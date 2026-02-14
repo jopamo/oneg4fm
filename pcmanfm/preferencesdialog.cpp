@@ -21,6 +21,7 @@
 
 #include "application.h"
 #include "settings.h"
+#include "../src/ui/visual_style.h"
 
 namespace PCManFM {
 
@@ -67,6 +68,7 @@ PreferencesDialog::PreferencesDialog(const QString& activePage, QWidget* parent)
     ui.setupUi(this);
     setAttribute(Qt::WA_DeleteOnClose);
 
+    UiStyle::applyWarningLabel(ui.warningLabel);
     ui.warningLabel->hide();
 
     // keep the page selector narrow and vertically stretchable
